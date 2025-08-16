@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -15,26 +15,16 @@ import {
   ChevronRight,
   MapPin,
 } from "lucide-react";
-import { getEventsByYear, type Event as ApiEvent } from "../../api/eventApi";
-import {
-  getActivityImage,
-  convertToDataUrl,
-  type ActivityImageResponse,
-} from "../../api/activityApi";
-import {
-  getEventLocationsByEventId,
-  type EventLocation,
-} from "../../api/locationApi";
-import EventDetailsModal from "./modals/EventDetailsModal";
+import EventDetailsModal from "./modals/EventDetailsModal"; // <-- Add this import
 
-// Extended Event type that matches the EventsCalendar component
-interface Event extends ApiEvent {
+// Dummy Event type (no API dependency)
+interface Event {
+  id: number;
+  title: string;
   details?: string;
   requirements?: string[];
   duration?: string;
   location?: string;
-  id?: number;
-  title?: string;
   objective?: string;
   date?: string;
   time?: string;
@@ -47,6 +37,14 @@ interface Event extends ApiEvent {
   monthValue?: number;
   loadingLocations?: boolean;
   loadingImage?: boolean;
+  tentativeMonth?: string;
+  tentativeYear?: string;
+  subName?: string;
+  name?: string;
+  eventId?: number;
+  activityId?: number;
+  type?: string;
+  description?: string;
 }
 
 // Financial year months (April to March)
@@ -91,30 +89,106 @@ const getMonthColor = (monthValue: number) => {
 const AnnualEventsCalendar = () => {
   const navigate = useNavigate();
 
-  // Get current financial year
-  const getCurrentFinancialYear = () => {
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1; // 1-12
-    const currentYear = now.getFullYear();
-    return currentMonth >= 4 ? currentYear : currentYear - 1;
-  };
+  // Dummy events data for static site
+  const dummyEvents: Event[] = [
+    {
+      id: 1,
+      title: "Tree Plantation Drive",
+      details: "Join us for a tree plantation drive in your city.",
+      requirements: ["Enthusiasm", "Team spirit"],
+      duration: "Half Day",
+      location: "Mumbai",
+      objective: "Increase green cover",
+      date: "2025-06-15",
+      time: "09:00 AM",
+      venue: "City Park",
+      locations: ["Mumbai"],
+      faqs: [{ q: "What to bring?", a: "Water bottle, cap" }],
+      displayDate: "Jun 2025",
+      image: `${BASE_URL}/images/photos/image1.jpeg`,
+      color: getMonthColor(6),
+      monthValue: 6,
+      loadingLocations: false,
+      loadingImage: false,
+      tentativeMonth: "6",
+      tentativeYear: "2025",
+      subName: "Environment",
+      name: "Tree Plantation Drive",
+      eventId: 1,
+      activityId: 1,
+      type: "annual",
+      description: "Annual tree plantation event.",
+    },
+    {
+      id: 2,
+      title: "Blood Donation Camp",
+      details: "Donate blood and save lives.",
+      requirements: ["Good health"],
+      duration: "Full Day",
+      location: "Delhi",
+      objective: "Support local hospitals",
+      date: "2025-08-10",
+      time: "10:00 AM",
+      venue: "Community Hall",
+      locations: ["Delhi"],
+      faqs: [{ q: "Who can donate?", a: "Anyone above 18 years" }],
+      displayDate: "Aug 2025",
+      image: `${BASE_URL}/images/photos/image2.jpeg`,
+      color: getMonthColor(8),
+      monthValue: 8,
+      loadingLocations: false,
+      loadingImage: false,
+      tentativeMonth: "8",
+      tentativeYear: "2025",
+      subName: "Health",
+      name: "Blood Donation Camp",
+      eventId: 2,
+      activityId: 2,
+      type: "annual",
+      description: "Annual blood donation event.",
+    },
+    {
+      id: 3,
+      title: "We Care Month",
+      details: "Special month of giving back.",
+      requirements: [],
+      duration: "Full Month",
+      location: "All Locations",
+      objective: "Corporate Social Responsibility",
+      date: "2025-08-01",
+      time: "",
+      venue: "",
+      locations: ["All Locations"],
+      faqs: [],
+      displayDate: "Aug 2025",
+      image: `${BASE_URL}/images/photos/image25.jpeg`,
+      color: getMonthColor(8),
+      monthValue: 8,
+      loadingLocations: false,
+      loadingImage: false,
+      tentativeMonth: "8",
+      tentativeYear: "2025",
+      subName: "CSR",
+      name: "We Care Month",
+      eventId: 3,
+      activityId: 3,
+      type: "annual",
+      description: "Special month of giving back.",
+    },
+    // Add more dummy events as needed
+  ];
 
-  const [selectedFinancialYear, setSelectedFinancialYear] = useState(
-    getCurrentFinancialYear()
-  );
+  // Remove all useEffect and API loading logic, use dummy data directly
+  const [selectedFinancialYear, setSelectedFinancialYear] = useState(2025);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null); // null = full year
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [hoveredEvents] = useState<{ title: string; date: string }[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  //@ts-ignore
-  const [loadingImages, setLoadingImages] = useState<Set<number>>(new Set());
-
-  // Track if initial events are loaded (for instant grid display)
-  const [eventsLoaded, setEventsLoaded] = useState(false);
+  const [events] = useState<Event[]>(dummyEvents);
+  const [loading] = useState(false);
+  const [error] = useState<string | null>(null);
+  const [eventsLoaded] = useState(true);
 
   // Ref for the section
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -134,212 +208,38 @@ const AnnualEventsCalendar = () => {
     });
   };
 
-  useEffect(() => {
-    loadAnnualEvents();
-    // eslint-disable-next-line
-  }, []);
+  // Get current financial year
+  // const getCurrentFinancialYear = () => {
+  //   const now = new Date();
+  //   const currentMonth = now.getMonth() + 1; // 1-12
+  //   const currentYear = now.getFullYear();
+  //   return currentMonth >= 4 ? currentYear : currentYear - 1;
+  // };
 
-  // Fetch all event details first, display immediately, then load locations/images one by one (sequentially)
-  const loadAnnualEvents = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const currentYear = new Date().getFullYear();
-      const years = [
-        (currentYear - 2).toString(),
-        (currentYear - 1).toString(),
-        currentYear.toString(),
-        (currentYear + 1).toString(),
-        (currentYear + 2).toString(),
-      ];
-
-      let allEvents: ApiEvent[] = [];
-
-      // Fetch all event details first (no images, no locations)
-      for (const year of years) {
-        try {
-          const response = await getEventsByYear(year);
-          if (response.data && Array.isArray(response.data)) {
-            allEvents = [...allEvents, ...response.data];
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      // Filter annual events (no locations yet)
-      const annualEvents = allEvents.filter((event) => {
-        const isAnnual = event.type?.toLowerCase() === "annual";
-        const hasRequiredFields =
-          event.type && event.tentativeMonth && event.tentativeYear;
-        const containsTest =
-          /test/i.test(event.name) ||
-          (event.subName && /test/i.test(event.subName)) ||
-          (event.description && /test/i.test(event.description));
-        return hasRequiredFields && isAnnual && !containsTest;
-      });
-
-      // Prepare processed events with empty locations (for fast display)
-      const processedEvents: Event[] = annualEvents.map((event) => {
-        const eventYear = parseInt(event.tentativeYear);
-        const eventMonth = parseInt(event.tentativeMonth);
-        const eventDate = new Date(eventYear, eventMonth - 1, 1);
-        const dateString = eventDate.toISOString().split("T")[0];
-        const displayDate = formatDisplayDate(eventMonth, eventYear);
-
-        return {
-          ...event,
-          id: event.eventId,
-          title: event.name,
-          objective: event.description || "",
-          date: dateString,
-          time: "To be announced",
-          venue: "To be announced",
-          location: "", // will be filled later
-          details: event.description || "",
-          requirements: [],
-          duration: "Full Day",
-          locations: [],
-          faqs: [],
-          displayDate: displayDate,
-          image: undefined, // image will be loaded later
-          monthValue: eventMonth,
-          color: getMonthColor(eventMonth),
-          loadingLocations: true,
-          loadingImage: !!event.activityId,
-        };
-      });
-
-      // Sort events by tentativeYear, then tentativeMonth
-      processedEvents.sort((a, b) => {
-        const yearA = parseInt(a.tentativeYear);
-        const yearB = parseInt(b.tentativeYear);
-        if (yearA !== yearB) return yearA - yearB;
-        const monthA = parseInt(a.tentativeMonth);
-        const monthB = parseInt(b.tentativeMonth);
-        return monthA - monthB;
-      });
-
-      // Set events immediately after fetching getEventsByYear (do not wait for locations/images)
-      setEvents(processedEvents);
-      setEventsLoaded(true);
-      setLoading(false);
-
-      // --- Sequentially fetch locations and images for each event ---
-      for (const event of processedEvents) {
-        // Fetch locations
-        try {
-          const response = await getEventLocationsByEventId(event.eventId);
-          const locations = response.data;
-          let locationNames: string[] = [];
-          if (locations && locations.length > 0) {
-            locationNames = locations.map((loc: EventLocation) => loc.locationName);
-          } else {
-            locationNames = ["Location TBD"];
-          }
-          setEvents((prevEvents) =>
-            prevEvents.map((e) =>
-              e.eventId === event.eventId
-                ? { ...e, locations: locationNames, location: locationNames.join(", "), loadingLocations: false }
-                : e
-            )
-          );
-        } catch {
-          setEvents((prevEvents) =>
-            prevEvents.map((e) =>
-              e.eventId === event.eventId
-                ? { ...e, locations: ["Location TBD"], location: "Location TBD", loadingLocations: false }
-                : e
-            )
-          );
-        }
-
-        // Fetch image
-        if (event.activityId) {
-          setLoadingImages((prev) => new Set(prev).add(event.activityId));
-          try {
-            const response = await getActivityImage(event.activityId);
-            const imageData: ActivityImageResponse = response.data;
-            // Use fileName as image path if present (new API)
-            if (imageData.fileName) {
-              setEvents((prevEvents) =>
-                prevEvents.map((e) =>
-                  e.activityId === event.activityId
-                    ? { ...e, image: imageData.fileName, loadingImage: false }
-                    : e
-                )
-              );
-            } else if (imageData.imgFile && imageData.contentType) {
-              // fallback for legacy
-              const dataUrl = convertToDataUrl(
-                imageData.imgFile,
-                imageData.contentType
-              );
-              setEvents((prevEvents) =>
-                prevEvents.map((e) =>
-                  e.activityId === event.activityId
-                    ? { ...e, image: dataUrl, loadingImage: false }
-                    : e
-                )
-              );
-            } else {
-              setEvents((prevEvents) =>
-                prevEvents.map((e) =>
-                  e.activityId === event.activityId
-                    ? { ...e, loadingImage: false }
-                    : e
-                )
-              );
-            }
-          } catch {
-            setEvents((prevEvents) =>
-              prevEvents.map((e) =>
-                e.activityId === event.activityId
-                  ? { ...e, loadingImage: false }
-                  : e
-              )
-            );
-          } finally {
-            setLoadingImages((prev) => {
-              const newSet = new Set(prev);
-              newSet.delete(event.activityId);
-              return newSet;
-            });
-          }
-        }
-      }
-      // --- End sequential fetch ---
-    } catch (error) {
-      setError("Failed to load annual events");
-      setLoading(false);
-    }
-  };
-
-  const formatDisplayDate = (month: number, year: number): string => {
-    const monthNames = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-    const monthName = monthNames[month - 1] || "Unknown";
-    return `${monthName} ${year}`;
-  };
+  // const formatDisplayDate = (month: number, year: number): string => {
+  //   const monthNames = [
+  //     "Jan",
+  //     "Feb",
+  //     "Mar",
+  //     "Apr",
+  //     "May",
+  //     "Jun",
+  //     "Jul",
+  //     "Aug",
+  //     "Sep",
+  //     "Oct",
+  //     "Nov",
+  //     "Dec",
+  //   ];
+  //   const monthName = monthNames[month - 1] || "Unknown";
+  //   return `${monthName} ${year}`;
+  // };
 
   // Get events for selected financial year and selected month/full year
   const getFilteredEvents = (): Event[] => {
     const filtered = events.filter((event) => {
-      const eventMonth = parseInt(event.tentativeMonth);
-      const eventYear = parseInt(event.tentativeYear);
+      const eventMonth = parseInt(event.tentativeMonth ?? "0");
+      const eventYear = parseInt(event.tentativeYear ?? "0");
       const isInFinancialYear =
         (eventMonth >= 4 && eventYear === selectedFinancialYear) ||
         (eventMonth <= 3 && eventYear === selectedFinancialYear + 1);
@@ -351,11 +251,11 @@ const AnnualEventsCalendar = () => {
     });
     // Sort by year, then month
     filtered.sort((a, b) => {
-      const yearA = parseInt(a.tentativeYear);
-      const yearB = parseInt(b.tentativeYear);
+      const yearA = parseInt(a.tentativeYear ?? "0");
+      const yearB = parseInt(b.tentativeYear ?? "0");
       if (yearA !== yearB) return yearA - yearB;
-      const monthA = parseInt(a.tentativeMonth);
-      const monthB = parseInt(b.tentativeMonth);
+      const monthA = parseInt(a.tentativeMonth ?? "0");
+      const monthB = parseInt(b.tentativeMonth ?? "0");
       return monthA - monthB;
     });
     return filtered;
@@ -365,8 +265,8 @@ const AnnualEventsCalendar = () => {
   const getMonthsWithEvents = () => {
     const monthsWithEvents = new Map<number, { count: number }>();
     events.forEach((event) => {
-      const eventMonth = parseInt(event.tentativeMonth);
-      const eventYear = parseInt(event.tentativeYear);
+      const eventMonth = parseInt(event.tentativeMonth ?? "0");
+      const eventYear = parseInt(event.tentativeYear ?? "0");
       const isInFinancialYear =
         (eventMonth >= 4 && eventYear === selectedFinancialYear) ||
         (eventMonth <= 3 && eventYear === selectedFinancialYear + 1);
@@ -620,8 +520,8 @@ const AnnualEventsCalendar = () => {
             <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
             <p className="text-gray-600 mb-2">Unable to load annual events</p>
             <button
-              onClick={loadAnnualEvents}
-              className="text-blue-600 hover:text-blue-800 font-medium"
+              className="text-blue-600 hover:text-blue-800 font-medium cursor-not-allowed opacity-60"
+              disabled
             >
               Try again
             </button>
@@ -820,8 +720,8 @@ const AnnualEventsCalendar = () => {
                       {/* Highlight effect on hover */}
                       {isEventHovered(
                         {
-                          title: event.title || event.name,
-                          date: event.date || "",
+                          title: event.title ?? event.name ?? "",
+                          date: event.date ?? "",
                         },
                         idx
                       ) && (

@@ -7,23 +7,27 @@ import {
   CheckCircle2,
   Clock,
   UserPlus,
-  Loader2,
   ChevronRight,
   AlertCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Event as ApiEvent } from "../../../api/eventApi";
-import {
-  getEventLocationsByEventId,
-  getEventLocationsDateByEventLocId,
-  type EventLocation,
-} from "../../../api/locationApi";
-import React from "react";
-import { fadeInVariants } from "../../../utils/animationVariants"; // <-- Import optimized animation
+import React, { useState } from "react";
+import { fadeInVariants } from "../../../utils/animationVariants";
 
-// Extended Event type that matches the EventsCalendar component
-interface Event extends ApiEvent {
+// Dummy EventLocation type for static data
+interface EventLocation {
+  eventLocationId: number;
+  locationName: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  venue: string;
+  dateType?: string;
+}
+
+// Extended Event type for static data
+interface Event {
   details?: string;
   requirements?: string[];
   duration?: string;
@@ -36,15 +40,31 @@ interface Event extends ApiEvent {
   venue?: string;
   locations?: string[];
   faqs?: { q: string; a: string }[];
+  displayDate?: string;
+  image?: string;
+  color?: string;
+  monthValue?: number;
+  loadingLocations?: boolean;
+  loadingImage?: boolean;
+  tentativeMonth?: string;
+  tentativeYear?: string;
+  subName?: string;
+  name?: string;
+  eventId?: number;
+  activityId?: number;
+  type?: string;
+  description?: string;
+  enableComp?: string;
+  enableConf?: string;
+  eventLocations?: EventLocation[];
 }
 
 interface EventDetailModalProps {
   event: Event;
   isOpen: boolean;
   onClose: () => void;
-  eventImageUrl?: string | null; // <-- Add this prop
-  selectedMonth?: string; // <-- Add this prop
-  eventIds?: number[]; // <-- Add this prop to fix the error
+  eventImageUrl?: string | null;
+  selectedMonth?: string;
   tentativeYear?: string;
   tentativeMonth?: string;
   isYearRound?: boolean;
@@ -55,19 +75,16 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
   onClose,
   event,
   selectedMonth,
-  eventIds,
   tentativeYear,
   tentativeMonth,
   isYearRound,
   eventImageUrl: eventImageUrlProp,
 }) => {
-  // All hooks at the top!
   const navigate = useNavigate();
-  const [eventLocations, setEventLocations] = useState<EventLocation[]>([]);
-  const [loadingLocations, setLoadingLocations] = useState(false);
   const [eventImageUrl, setEventImageUrl] = useState<string | null>(null);
-  const [locationDates, setLocationDates] = useState<Record<number, string[]>>({});
-  const [loadingDates, setLoadingDates] = useState<Record<number, boolean>>({});
+
+  // Use eventLocations from event prop (dummy/static)
+  const eventLocations: EventLocation[] = event.eventLocations || [];
 
   // Disable body scroll when modal is open
   useEffect(() => {
@@ -81,52 +98,14 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
     };
   }, [isOpen]);
 
-  // Load event locations when modal opens
-  useEffect(() => {
-    const fetchLocations = async () => {
-      if (isOpen && eventIds && eventIds.length > 0) {
-        setLoadingLocations(true);
-        try {
-          let allLocs: EventLocation[] = [];
-          for (const eid of eventIds) {
-            const resp = await getEventLocationsByEventId(eid);
-            allLocs = allLocs.concat(resp.data);
-          }
-          setEventLocations(allLocs);
-        } catch {
-          setEventLocations([]);
-        } finally {
-          setLoadingLocations(false);
-        }
-      } else if (isOpen && event?.eventId) {
-        // fallback to single event
-        setLoadingLocations(true);
-        try {
-          const resp = await getEventLocationsByEventId(event.eventId);
-          setEventLocations(resp.data);
-        } catch {
-          setEventLocations([]);
-        } finally {
-          setLoadingLocations(false);
-        }
-      } else {
-        setEventLocations([]);
-      }
-    };
-    fetchLocations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, eventIds, event?.eventId]);
-
   useEffect(() => {
     setEventImageUrl(eventImageUrlProp ?? null);
   }, [eventImageUrlProp]);
 
-  // ✅ Check if event is completed/closed for nominations
   const isEventCompleted = (event: Event): boolean => {
     return event.enableComp === "true";
   };
 
-  // ✅ Get event status for display
   const getEventStatus = (event: Event) => {
     if (isEventCompleted(event)) {
       return {
@@ -140,7 +119,7 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
       };
     }
     const currentYear = new Date().getFullYear();
-    const eventYear = parseInt(event.tentativeYear);
+    const eventYear = parseInt(event.tentativeYear || "");
     if (eventYear > currentYear) {
       return {
         type: "upcoming",
@@ -163,14 +142,12 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
     };
   };
 
-  // Check if time is valid (not default/empty values)
   const isValidTime = (timeString: string) => {
     if (!timeString || timeString.trim() === "") return false;
     if (timeString === "00:00:00" || timeString === "00:00") return false;
     return true;
   };
 
-  // Format time display with fallback
   const formatTime = (timeString: string) => {
     if (!isValidTime(timeString)) return "To be shared";
     try {
@@ -184,7 +161,6 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
     }
   };
 
-  // Format venue display
   const formatVenue = (venue: string): string[] => {
     if (!venue || venue.trim() === "") return [];
     return venue
@@ -193,7 +169,6 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
       .map((v) => v.trim());
   };
 
-  // Check if date is valid (not default/empty values)
   const isValidDate = (dateString: string) => {
     if (!dateString || dateString.trim() === "") return false;
     if (dateString === "0001-01-01" || dateString.startsWith("0001-"))
@@ -208,7 +183,6 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
     }
   };
 
-  // Format date display with fallback
   const formatDate = (dateString: string) => {
     if (!isValidDate(dateString)) return "To be shared";
     try {
@@ -224,7 +198,6 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
     }
   };
 
-  // Helper: Convert month number to name if needed
   const getMonthName = (month: string | number | undefined) => {
     if (!month) return "";
     if (isNaN(Number(month))) return month;
@@ -233,14 +206,11 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
     return new Date(2000, m - 1, 1).toLocaleString("en-US", { month: "long" });
   };
 
-  // Now, after all hooks, you can do:
   if (!event) return null;
 
-  // ✅ Get event status
   const eventStatus = getEventStatus(event);
   const isCompleted = isEventCompleted(event);
 
-  // Function to safely render HTML content
   const renderHtmlContent = (htmlContent: string) => {
     if (!htmlContent) return "Details will be shared soon.";
     return (
@@ -282,28 +252,24 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
       : "To be shared";
 
   // Compose all unique event dates from eventLocations
-  //@ts-ignore
-  const allEventDates = eventLocations
-    .map((loc) => loc.eventDate)
-    .filter((date) => !!date && date !== "0001-01")
-    .map((date) => {
-      try {
-        const d = new Date(date);
-        return d.toLocaleDateString("en-US", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean);
+  // const allEventDates = eventLocations
+  //   .map((loc) => loc.eventDate)
+  //   .filter((date) => !!date && date !== "0001-01")
+  //   .map((date) => {
+  //     try {
+  //       const d = new Date(date);
+  //       return d.toLocaleDateString("en-US", {
+  //         weekday: "long",
+  //         year: "numeric",
+  //         month: "long",
+  //         day: "numeric",
+  //       });
+  //     } catch {
+  //       return null;
+  //     }
+  //   })
+  //   .filter(Boolean);
 
-  // const uniqueEventDates = Array.from(new Set(allEventDates)).join(", ") || "To be shared";
-
-  // Handler for "all August activities" link
   const handleAugustActivitiesClick = (e: React.MouseEvent) => {
     e.preventDefault();
     onClose();
@@ -312,105 +278,56 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
     }, 200);
   };
 
-  // Responsive: Show fixed bottom button on mobile, hide sticky sidebar button
-  // Tailwind: 'block lg:hidden' for mobile, 'hidden lg:block' for desktop
-
   // Helper to format multiple dates and date ranges
-  const formatEventLocationDates = (
-    dateType: string | undefined,
-    dates: string[] | undefined,
-    fallbackDate: string
-  ) => {
-    if (!dates || dates.length === 0) return fallbackDate;
-    // Filter out invalid/empty dates
-    const validDates = dates
-      .map((d) => {
-        if (!d) return null;
-        const dateObj = new Date(d);
-        return isNaN(dateObj.getTime()) ? null : dateObj;
-      })
-      .filter(Boolean) as Date[];
+  // const formatEventLocationDates = (
+  //   dateType: string | undefined,
+  //   dates: string[] | undefined,
+  //   fallbackDate: string
+  // ) => {
+  //   if (!dates || dates.length === 0) return fallbackDate;
+  //   const validDates = dates
+  //     .map((d) => {
+  //       if (!d) return null;
+  //       const dateObj = new Date(d);
+  //       return isNaN(dateObj.getTime()) ? null : dateObj;
+  //     })
+  //     .filter(Boolean) as Date[];
 
-    if (validDates.length === 0) return fallbackDate;
+  //   if (validDates.length === 0) return fallbackDate;
 
-    // Sort dates ascending
-    validDates.sort((a, b) => a.getTime() - b.getTime());
+  //   validDates.sort((a, b) => a.getTime() - b.getTime());
 
-    if (dateType === "M") {
-      // Multiple dates: show as comma separated, e.g. "21 Aug 2025, 24 Aug 2025"
-      return validDates
-        .map((date) =>
-          date.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })
-        )
-        .join(", ");
-    }
-    if (dateType === "R" && validDates.length > 1) {
-      // Range: show as "21 Aug 2025 - 25 Aug 2025"
-      const start = validDates[0];
-      const end = validDates[validDates.length - 1];
-      return `${start.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })} - ${end.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })}`;
-    }
-    // Single date
-    const date = validDates[0];
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  // Fetch dates for each event location when eventLocations change
-  useEffect(() => {
-    if (!eventLocations || eventLocations.length === 0) return;
-    eventLocations.forEach((loc) => {
-      if (
-        (loc.dateType === "M" || loc.dateType === "R") &&
-        !locationDates[loc.eventLocationId]
-      ) {
-        setLoadingDates((prev) => ({ ...prev, [loc.eventLocationId]: true }));
-        getEventLocationsDateByEventLocId(loc.eventLocationId)
-          .then((res) => {
-            // Map API response to array of date strings
-            // API response: [{ eventLocationDatesId, date }]
-            const dates =
-              Array.isArray(res.data)
-                ? res.data
-                    .map((d: any) => d.date?.slice(0, 10) || "")
-                    .filter(Boolean)
-                : [];
-            setLocationDates((prev) => ({
-              ...prev,
-              [loc.eventLocationId]: dates,
-            }));
-          })
-          .catch(() => {
-            setLocationDates((prev) => ({
-              ...prev,
-              [loc.eventLocationId]: [],
-            }));
-          })
-          .finally(() => {
-            setLoadingDates((prev) => ({
-              ...prev,
-              [loc.eventLocationId]: false,
-            }));
-          });
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventLocations]);
+  //   if (dateType === "M") {
+  //     return validDates
+  //       .map((date) =>
+  //         date.toLocaleDateString("en-US", {
+  //           year: "numeric",
+  //           month: "short",
+  //           day: "numeric",
+  //         })
+  //       )
+  //       .join(", ");
+  //   }
+  //   if (dateType === "R" && validDates.length > 1) {
+  //     const start = validDates[0];
+  //     const end = validDates[validDates.length - 1];
+  //     return `${start.toLocaleDateString("en-US", {
+  //       year: "numeric",
+  //       month: "short",
+  //       day: "numeric",
+  //     })} - ${end.toLocaleDateString("en-US", {
+  //       year: "numeric",
+  //       month: "short",
+  //       day: "numeric",
+  //     })}`;
+  //   }
+  //   const date = validDates[0];
+  //   return date.toLocaleDateString("en-US", {
+  //     year: "numeric",
+  //     month: "short",
+  //     day: "numeric",
+  //   });
+  // };
 
   return (
     <AnimatePresence>
@@ -420,7 +337,7 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
           initial="initial"
           animate="animate"
           exit="initial"
-          variants={fadeInVariants("none", 0)} // <-- Use fadeInVariants for overlay
+          variants={fadeInVariants("none", 0)}
           onClick={onClose}
         >
           <motion.div
@@ -428,11 +345,11 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
             initial="initial"
             animate="animate"
             exit="initial"
-            variants={fadeInVariants("up", 0.08)} // <-- Use fadeInVariants for modal
+            variants={fadeInVariants("up", 0.08)}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex-1 flex flex-col overflow-y-auto max-h-[96vh] custom-scrollbar">
-              {/* Title Bar with Image (not fixed, scrolls with content) */}
+              {/* Title Bar with Image */}
               <div className="relative w-full">
                 {eventImageUrl && (
                   <motion.div
@@ -440,7 +357,7 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                     initial="initial"
                     animate="animate"
                     exit="initial"
-                    variants={fadeInVariants("up", 0.12)} // Animate image
+                    variants={fadeInVariants("up", 0.12)}
                   >
                     <img
                       src={eventImageUrl}
@@ -457,7 +374,7 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                     initial="initial"
                     animate="animate"
                     exit="initial"
-                    variants={fadeInVariants("down", 0.13)} // Animate close button
+                    variants={fadeInVariants("down", 0.13)}
                   >
                     <X className="w-6 h-6" />
                   </motion.button>
@@ -467,7 +384,7 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                   initial="initial"
                   animate="animate"
                   exit="initial"
-                  variants={fadeInVariants("up", 0.15)} // Animate title bar
+                  variants={fadeInVariants("up", 0.15)}
                 >
                   <h2 className="text-2xl font-bold text-white">
                     {event.title || event.name}
@@ -497,14 +414,14 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                 <div className="grid lg:grid-cols-3 gap-6">
                   {/* Left Column - Event Details */}
                   <div className="lg:col-span-2 space-y-6">
-                    {/* ✅ Event Status Alert */}
+                    {/* Event Status Alert */}
                     {isCompleted && (
                       <motion.div
                         className="bg-red-50 border border-red-200 rounded-lg p-4"
                         initial="initial"
                         animate="animate"
                         exit="initial"
-                        variants={fadeInVariants("down", 0.18)} // Animate alert
+                        variants={fadeInVariants("down", 0.18)}
                       >
                         <div className="flex items-start gap-3">
                           <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
@@ -533,7 +450,7 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                         Event Details
                       </h3>
                       <div className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                        {renderHtmlContent(event.description)}
+                        {renderHtmlContent(event.description || "")}
                       </div>
                     </motion.div>
 
@@ -548,14 +465,7 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                         <MapPin className="w-5 h-5 text-yellow-600" />
                         Event Locations & Schedule
                       </h3>
-                      {loadingLocations ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="w-6 h-6 animate-spin text-yellow-500" />
-                          <span className="ml-2 text-gray-600 dark:text-gray-400">
-                            Loading location details...
-                          </span>
-                        </div>
-                      ) : eventLocations.length === 0 ? (
+                      {eventLocations.length === 0 ? (
                         <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 text-center">
                           <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                           <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -569,12 +479,7 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                       ) : (
                         <div className="space-y-4">
                           {eventLocations.map((location, index) => {
-                            // Determine if date/time should be shown for this location
                             const showDateTime = event.enableConf === "true" && isValidDate(location.eventDate);
-                            const isMultiOrRange = location.dateType === "M" || location.dateType === "R";
-                            const dates = locationDates[location.eventLocationId];
-                            const isLoadingDates = loadingDates[location.eventLocationId];
-
                             return (
                               <motion.div
                                 key={location.eventLocationId}
@@ -594,26 +499,12 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                                         {location.locationName}
                                       </h4>
                                       <p className="text-[#2B0A3D] text-sm">
-                                        {/* Always show "To be shared" for date if enableConf is not true */}
                                         {event.enableConf !== "true"
                                           ? "To be shared"
-                                          : isMultiOrRange ? (
-                                              isLoadingDates ? (
-                                                <span>Loading dates...</span>
-                                              ) : (
-                                                formatEventLocationDates(
-                                                  location.dateType,
-                                                  dates,
-                                                  showDateTime ? location.eventDate : "To be shared"
-                                                )
-                                              )
-                                            ) : showDateTime ? (
-                                              formatDate(location.eventDate)
-                                            ) : (
-                                              "To be shared"
-                                            )}
+                                          : showDateTime
+                                          ? formatDate(location.eventDate)
+                                          : "To be shared"}
                                       </p>
-                                      {/* Show tentative month/year for year-round activities */}
                                       {isYearRound && tentativeMonth && tentativeYear && (
                                         <p className="text-md font-bold text-[#2B0A3D] mt-1">
                                           Tentative: {getMonthName(tentativeMonth)} {tentativeYear}
@@ -625,7 +516,6 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                                     <div className="flex items-center gap-2 text-sm text-[#2B0A3D]">
                                       <Clock className="w-4 h-4" />
                                       <span className="font-medium">
-                                        {/* Always show "To be shared" for time if enableConf is not true */}
                                         {event.enableConf !== "true"
                                           ? "To be shared"
                                           : showDateTime &&
@@ -702,7 +592,6 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                         <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
                           Quick Info
                         </h4>
-                        {/* Location row with MapPin icon, prevent icon shrink */}
                         <div className="flex items-start gap-2">
                           <span className="flex-shrink-0 flex items-center justify-center mt-0.5">
                             <MapPin className="w-5 h-5 text-yellow-600" />
@@ -711,13 +600,10 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                             Locations:
                             <span className="whitespace-pre-line break-words text-gray-900 font-normal dark:text-white">
                               {" "}
-                              {loadingLocations
-                                ? "Loading..."
-                                : allLocationNames}
+                              {allLocationNames}
                             </span>
                           </span>
                         </div>
-                        {/* Status row with Info/CheckCircle2 icon, prevent icon shrink */}
                         <div className="flex items-center gap-2">
                           <span className="flex-shrink-0 flex items-center justify-center">
                             {eventStatus.type === "completed" ? (
@@ -733,7 +619,7 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                         </div>
                       </motion.div>
 
-                      {/* ✅ Updated Nomination Button Section */}
+                      {/* Nomination Button Section */}
                       <motion.div
                         className={`border rounded-lg p-4 mt-6 ${
                           isCompleted
@@ -816,7 +702,6 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
                       )}
                     </div>
                   </div>
-                  {/* End Right Column */}
                 </div>
               </div>
             </div>
