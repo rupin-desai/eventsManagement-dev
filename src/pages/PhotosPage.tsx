@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, X as LucideX, ChevronLeft, ChevronRight } from "lucide-react";
-import { getGallery } from "../api/galleryApi";
-import { getActivityById } from "../api/activityApi";
+// Removed API imports
+// import { getGallery } from "../api/galleryApi";
+// import { getActivityById } from "../api/activityApi";
 import { textVariants, fadeInVariants } from "../utils/animationVariants";
 
 // --- Carousel Overlay Modal ---
@@ -143,83 +144,83 @@ interface ActivityTitleMap {
 
 const BASE_URL = import.meta.env.BASE_URL || "/";
 
+// Dummy gallery images (Unsplash)
+const dummyGalleryImages: GalleryImage[] = [
+  {
+    id: 1,
+    imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+    activityId: 1,
+    title: "Tree Plantation",
+    status: "N",
+  },
+  {
+    id: 2,
+    imageUrl: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80",
+    activityId: 2,
+    title: "Blood Donation",
+    status: "N",
+  },
+  {
+    id: 3,
+    imageUrl: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80",
+    activityId: 3,
+    title: "Community Clean-Up",
+    status: "N",
+  },
+  {
+    id: 4,
+    imageUrl: "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=800&q=80",
+    activityId: null,
+    title: "Other Event",
+    status: "N",
+  },
+  {
+    id: 5,
+    imageUrl: "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=800&q=80",
+    activityId: 2,
+    title: "Literacy Program",
+    status: "N",
+  },
+  {
+    id: 6,
+    imageUrl: "https://images.unsplash.com/photo-1468421870903-4df1664ac249?auto=format&fit=crop&w=800&q=80",
+    activityId: 1,
+    title: "We Care Month",
+    status: "N",
+  },
+];
+
+// Dummy activity titles
+const dummyActivityTitles: ActivityTitleMap = {
+  1: "Tree Plantation",
+  2: "Blood Donation",
+  3: "Community Clean-Up",
+};
+
 const PhotosPage: React.FC = () => {
-  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [galleryImages] = useState<GalleryImage[]>(dummyGalleryImages);
   const [groupedImages, setGroupedImages] = useState<Record<number | string, GalleryImage[]>>({});
-  const [activityTitles, setActivityTitles] = useState<ActivityTitleMap>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [activityTitles] = useState<ActivityTitleMap>(dummyActivityTitles);
+  const [loading] = useState(false);
+  const [error] = useState<string | null>(null);
 
   // Carousel overlay state
   const [carouselImages, setCarouselImages] = useState<GalleryImage[] | null>(null);
   const [carouselIndex, setCarouselIndex] = useState<number>(0);
 
-  // Helper function to check if a file path is an image
-  const isImageFile = (filePath: string) => {
-    if (!filePath) return false;
-    return /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(filePath);
-  };
-
-  // Fetch gallery images and group by activityId
+  // Group images by activityId on mount
   useEffect(() => {
-    const fetchGalleryImages = async () => {
-      try {
-        setLoading(true);
-        const response = await getGallery();
-        // Only keep images with status === "N" and valid image extension
-        const images = response.data
-          .filter(
-            (image: any) =>
-              image.status === "N" && isImageFile(image.filePath)
-          )
-          .map((image: any) => ({
-            id: image.id || Math.random(),
-            imageUrl: image.filePath || "",
-            activityId: image.activityId || null,
-            title: image.title || "Untitled",
-            status: image.status,
-          }));
-        setGalleryImages(images);
-
-        // Group images by activityId
-        const grouped = images.reduce(
-          (acc: Record<number | string, GalleryImage[]>, img: GalleryImage) => {
-            const key = img.activityId || "Uncategorized";
-            if (!acc[key]) acc[key] = [];
-            acc[key].push(img);
-            return acc;
-          },
-          {} as Record<number | string, GalleryImage[]>
-        );
-
-        setGroupedImages(grouped);
-
-        // Fetch activity titles for all unique activityIds (except null/"Uncategorized")
-        const uniqueActivityIds = [
-          ...new Set(images.map((img: GalleryImage) => img.activityId).filter((id: number | null): id is number => id !== null)),
-        ] as number[];
-
-        const titleMap: ActivityTitleMap = {};
-        await Promise.all(
-          uniqueActivityIds.map(async (activityId) => {
-            try {
-              const res = await getActivityById(activityId);
-              titleMap[activityId] = res.data?.name?.trim() || `Activity ID: ${activityId}`;
-            } catch {
-              titleMap[activityId] = `Activity ID: ${activityId}`;
-            }
-          })
-        );
-        setActivityTitles(titleMap);
-      } catch (err) {
-        setError("Failed to fetch gallery images.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchGalleryImages();
-  }, []);
+    const grouped = galleryImages.reduce(
+      (acc: Record<number | string, GalleryImage[]>, img: GalleryImage) => {
+        const key = img.activityId ?? "Uncategorized";
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(img);
+        return acc;
+      },
+      {} as Record<number | string, GalleryImage[]>
+    );
+    setGroupedImages(grouped);
+  }, [galleryImages]);
 
   // Skeleton component for image loading
   const ImageSkeleton: React.FC = () => (

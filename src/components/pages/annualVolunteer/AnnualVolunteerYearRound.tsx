@@ -1,12 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
-import { getYearRoundActivities, getActivityImage, convertToDataUrl } from '../../../api/activityApi';
-import { getEventsByYear } from '../../../api/eventApi';
-import { getEventLocationsByEventId, type EventLocation } from '../../../api/locationApi';
-import type { Activity } from '../../../api/activityApi';
-import type { Event } from '../../../api/eventApi';
-import { AxiosError } from 'axios';
+import { Loader2, AlertCircle } from 'lucide-react';
 import {
   sectionVariants,
   fadeInVariants,
@@ -15,12 +9,117 @@ import {
 } from '../../../utils/animationVariants';
 import EventDetailsModal from "../../ui/modals/EventDetailsModal";
 
-// Helper function to strip HTML tags from description
+// Dummy Activity type
+interface Activity {
+  activityId: number;
+  name: string;
+  subName?: string;
+  description?: string;
+}
 
+// Dummy Event type
+interface Event {
+  eventId: number;
+  activityId: number;
+  name: string;
+  subName?: string;
+  description?: string;
+  tentativeMonth?: string;
+  tentativeYear?: string;
+  enableConf?: string;
+  enableComp?: string;
+  enableCert?: string;
+  type?: string;
+  status?: string;
+  finYear?: string;
+}
+
+// Dummy activities data
+const dummyActivities: Activity[] = [
+  {
+    activityId: 1,
+    name: "Community Clean-Up",
+    subName: "Environment",
+    description: "Help clean up local parks and public spaces.",
+  },
+  {
+    activityId: 2,
+    name: "Literacy Program",
+    subName: "Education",
+    description: "Volunteer to teach reading and writing skills.",
+  },
+  {
+    activityId: 3,
+    name: "Blood Donation Drive",
+    subName: "Health",
+    description: "Participate in organizing blood donation camps.",
+  },
+];
+
+// Dummy events data mapped by activityId
+const dummyEvents: Record<number, Event[]> = {
+  1: [
+    {
+      eventId: 101,
+      activityId: 1,
+      name: "Community Clean-Up",
+      subName: "Environment",
+      description: "Help clean up local parks and public spaces.",
+      tentativeMonth: "April",
+      tentativeYear: "2025",
+      enableConf: "true",
+      enableComp: "false",
+      enableCert: "true",
+      type: "year-round",
+      status: "active",
+      finYear: "2025-2026",
+    },
+  ],
+  2: [
+    {
+      eventId: 102,
+      activityId: 2,
+      name: "Literacy Program",
+      subName: "Education",
+      description: "Volunteer to teach reading and writing skills.",
+      tentativeMonth: "May",
+      tentativeYear: "2025",
+      enableConf: "true",
+      enableComp: "false",
+      enableCert: "true",
+      type: "year-round",
+      status: "active",
+      finYear: "2025-2026",
+    },
+  ],
+  3: [
+    {
+      eventId: 103,
+      activityId: 3,
+      name: "Blood Donation Drive",
+      subName: "Health",
+      description: "Participate in organizing blood donation camps.",
+      tentativeMonth: "June",
+      tentativeYear: "2025",
+      enableConf: "true",
+      enableComp: "false",
+      enableCert: "true",
+      type: "year-round",
+      status: "active",
+      finYear: "2025-2026",
+    },
+  ],
+};
+
+const dummyImages: Record<number, string> = {
+  1: "/images/photos/image1.jpeg",
+  2: "/images/photos/image2.jpeg",
+  3: "/images/photos/image3.jpeg",
+};
 
 // Helper function to truncate description till end of "Objective" line or when a <strong> tag is found,
 // and keep <strong> content as bold
-const truncateTillObjectiveOrStrong = (html: string): React.JSX.Element => {
+const truncateTillObjectiveOrStrong = (html: string = ""): React.JSX.Element => {
   const lowerHtml = html.toLowerCase();
   const objIdx = lowerHtml.indexOf("objective");
   let cutHtml = html;
@@ -60,234 +159,49 @@ const truncateTillObjectiveOrStrong = (html: string): React.JSX.Element => {
   );
 };
 
-// Helper function to check if activity contains "test" (case-insensitive)
-const containsTest = (activity: Activity): boolean => {
-  const testPattern = /test/i;
-  return (
-    testPattern.test(activity.name) ||
-    (activity.subName && testPattern.test(activity.subName)) ||
-    testPattern.test(activity.description)
-  );
-};
-
 interface ActivityWithImage extends Activity {
   imageDataUrl?: string;
   imageLoading?: boolean;
   imageError?: boolean;
 }
 
-const HomeUpcoming = () => {
-  const [activities, setActivities] = useState<ActivityWithImage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const AnnualVolunteerYearRound = () => {
+  // Use dummy data instead of API
+  const [activities] = useState<ActivityWithImage[]>(
+    dummyActivities.map((activity) => ({
+      ...activity,
+      imageDataUrl: dummyImages[activity.activityId],
+      imageLoading: false,
+      imageError: false,
+    }))
+  );
   const [selectedActivity, setSelectedActivity] = useState<ActivityWithImage | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [activityEvents, setActivityEvents] = useState<Record<number, Event[]>>({});
-  //@ts-ignore
-  const [activityLocations, setActivityLocations] = useState<Record<number, EventLocation[]>>({});
-  const [activityEventMeta, setActivityEventMeta] = useState<Record<number, { tentativeMonth: string; tentativeYear: string } | undefined>>({});
 
-  const loadActivityImage = async (activityId: number): Promise<string | null> => {
-    try {
-      const response = await getActivityImage(activityId);
-      const imageData = response.data;
-      // Use fileName as image path if present (new API)
-      if (imageData.fileName) {
-        return imageData.fileName;
-      }
-      // Fallback to legacy base64 if present
-      if (imageData.imgFile && imageData.contentType) {
-        return convertToDataUrl(imageData.imgFile, imageData.contentType);
-      }
-      return null;
-    } catch (error) {
-      console.error(`Failed to load image for activity ${activityId}:`, error);
-      return null;
-    }
-  };
-
-  const fetchYearRoundActivities = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await getYearRoundActivities();
-      
-      // Filter out activities that contain "test" (case-insensitive)
-      const filteredActivities = response.data.filter(activity => !containsTest(activity));
-      
-      const activitiesData = filteredActivities.map(activity => ({
-        ...activity,
-        imageLoading: true,
-        imageError: false
-      }));
-      
-      setActivities(activitiesData);
-
-      // Load images for each activity using their actual activityId
-      for (let i = 0; i < activitiesData.length; i++) {
-        const activity = activitiesData[i];
-        
-        const imageDataUrl = await loadActivityImage(activity.activityId);
-        
-        setActivities(prevActivities => 
-          prevActivities.map(act => 
-            act.activityId === activity.activityId 
-              ? {
-                  ...act,
-                  imageDataUrl: imageDataUrl || undefined,
-                  imageLoading: false,
-                  imageError: !imageDataUrl
-                }
-              : act
-          )
-        );
-        
-        // Small delay between image loads to avoid overwhelming the API
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    } catch (err) {
-      console.error('Error fetching year-round activities:', err);
-      
-      if (err instanceof AxiosError) {
-        if (err.response) {
-          setError(`Failed to load activities: ${err.response.status} ${err.response.statusText}`);
-        } else if (err.request) {
-          setError('Network error: Unable to fetch activities');
-        } else {
-          setError('Error loading activities: ' + err.message);
-        }
-      } else {
-        setError('An unexpected error occurred while loading activities');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch all events for the current year and group by activityId
-  const fetchEventsAndLocations = async (activities: ActivityWithImage[]) => {
-    try {
-      const year = new Date().getFullYear();
-      const eventsResp = await getEventsByYear(year);
-      const events: Event[] = eventsResp.data;
-
-      // Group events by activityId
-      const grouped: Record<number, Event[]> = {};
-      const meta: Record<number, { tentativeMonth: string; tentativeYear: string } | undefined> = {};
-      for (const event of events) {
-        if (!grouped[event.activityId]) grouped[event.activityId] = [];
-        grouped[event.activityId].push(event);
-        // Save tentativeMonth and tentativeYear for each activityId (first event found)
-        if (!meta[event.activityId]) {
-          meta[event.activityId] = {
-            tentativeMonth: event.tentativeMonth,
-            tentativeYear: event.tentativeYear,
-          };
-        }
-      }
-      setActivityEvents(grouped);
-      setActivityEventMeta(meta);
-
-      // For each activity, fetch all event locations for its events
-      const locationsMap: Record<number, EventLocation[]> = {};
-      for (const activity of activities) {
-        const eventsForActivity = grouped[activity.activityId] || [];
-        let allLocations: EventLocation[] = [];
-        for (const event of eventsForActivity) {
-          try {
-            const locResp = await getEventLocationsByEventId(event.eventId);
-            allLocations = allLocations.concat(locResp.data);
-          } catch {
-            // ignore error for this event
-          }
-        }
-        locationsMap[activity.activityId] = allLocations;
-      }
-      setActivityLocations(locationsMap);
-    } catch (err) {
-      // ignore error, fallback to empty
-      setActivityEvents({});
-      setActivityLocations({});
-      setActivityEventMeta({});
-    }
-  };
-
-  useEffect(() => {
-    const load = async () => {
-      await fetchYearRoundActivities();
-    };
-    load();
-  }, []);
-
-  // After activities are loaded, fetch events and locations
-  useEffect(() => {
-    if (activities.length > 0) {
-      fetchEventsAndLocations(activities);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activities.length]);
-
-  if (isLoading) {
-    return (
-      <section className="w-full my-10 flex justify-center py-10 bg-[#FBD336] relative">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin mr-3" />
-          <span className="text-lg">Loading Activities...</span>
-        </div>
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section className="w-full my-10 flex justify-center py-10 bg-[#FBD336] relative">
-        <div className="max-w-5xl w-full z-10">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-            <h3 className="text-lg font-semibold text-red-700 mb-2">Error Loading Activities</h3>
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={fetchYearRoundActivities}
-              className="flex items-center gap-2 mx-auto px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Retry
-            </button>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  // When opening modal, pass all eventIds for this activity and its tentativeMonth/year
+  // Handler for View Details
   const handleOpenModal = (activity: ActivityWithImage) => {
     setSelectedActivity(activity);
     setModalOpen(true);
   };
 
   // Prepare event details for the modal
-  const eventDetails = selectedActivity && activityEvents[selectedActivity.activityId]
-    ? activityEvents[selectedActivity.activityId][0]
-    : selectedActivity
-      ? {
-          eventId: 0,
-          activityId: selectedActivity.activityId,
-          name: selectedActivity.name,
-          subName: selectedActivity.subName,
-          description: selectedActivity.description,
-          tentativeMonth:
-            activityEventMeta[selectedActivity.activityId]?.tentativeMonth ?? "",
-          tentativeYear:
-            activityEventMeta[selectedActivity.activityId]?.tentativeYear ?? "",
-          enableConf: "false",
-          enableComp: "false",
-          enableCert: "false",
-          type: "",
-          status: "",
-          finYear: "",
-        }
-      : null;
+  const eventDetails = selectedActivity
+    ? dummyEvents[selectedActivity.activityId]?.[0] || {
+        eventId: 0,
+        activityId: selectedActivity.activityId,
+        name: selectedActivity.name,
+        subName: selectedActivity.subName,
+        description: selectedActivity.description,
+        tentativeMonth: "",
+        tentativeYear: "",
+        enableConf: "false",
+        enableComp: "false",
+        enableCert: "false",
+        type: "",
+        status: "",
+        finYear: "",
+      }
+    : null;
 
   return (
     <>
@@ -298,10 +212,9 @@ const HomeUpcoming = () => {
           onClose={() => setModalOpen(false)}
           event={eventDetails}
           selectedMonth={eventDetails.tentativeMonth || undefined}
-          eventIds={eventDetails.eventId ? [eventDetails.eventId] : []}
           tentativeYear={eventDetails.tentativeYear}
           tentativeMonth={eventDetails.tentativeMonth}
-          eventImageUrl={selectedActivity?.imageDataUrl ?? null} // <-- Pass the image URL here
+          eventImageUrl={selectedActivity?.imageDataUrl ?? null}
         />
       )}
 
@@ -437,4 +350,4 @@ const HomeUpcoming = () => {
   );
 };
 
-export default HomeUpcoming;
+export default AnnualVolunteerYearRound;

@@ -1,14 +1,29 @@
 import { MapPin, Clock, Loader2, Calendar, Info } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { sectionVariants, staggerChildrenVariants } from '../../../utils/animationVariants'
-import { getEventsByYear, type Event } from '../../../api/eventApi'
-import { getActivityImage, convertToDataUrl, type ActivityImageResponse } from '../../../api/activityApi'
-import { getEventLocationsByEventId, type EventLocation } from '../../../api/locationApi'
 import EventDetailsModal from '../../ui/modals/EventDetailsModal'
 
 const BASE_URL = import.meta.env.BASE_URL || "/";
 
+// Dummy Event type
+interface Event {
+  eventId: number;
+  activityId?: number;
+  name: string;
+  subName?: string;
+  description?: string;
+  tentativeMonth: string;
+  tentativeYear: string;
+  enableConf?: string;
+  enableComp?: string;
+  enableCert?: string;
+  type?: string;
+  status?: string;
+  finYear?: string;
+}
+
+// Dummy ProcessedEvent type
 interface ProcessedEvent {
   eventId: number;
   activityId?: number;
@@ -29,254 +44,105 @@ interface ProcessedEvent {
   };
 }
 
+// Dummy events data
+const dummyEvents: Event[] = [
+  {
+    eventId: 1,
+    name: 'Community Service Initiative',
+    subName: 'Volunteer Program',
+    description: 'Serve your community with pride.',
+    tentativeMonth: '7',
+    tentativeYear: '2025',
+    type: 'annual',
+  },
+  {
+    eventId: 2,
+    name: 'Environmental Awareness Drive',
+    subName: 'Go Green Initiative',
+    description: 'Promote environmental awareness.',
+    tentativeMonth: '7',
+    tentativeYear: '2025',
+    type: 'annual',
+  },
+  {
+    eventId: 3,
+    name: 'Health & Wellness Campaign',
+    subName: 'Community Outreach',
+    description: 'Support health and wellness in your area.',
+    tentativeMonth: '8',
+    tentativeYear: '2025',
+    type: 'annual',
+  }
+];
+
+// Dummy processed events
+const dummyProcessedEvents: ProcessedEvent[] = [
+  {
+    eventId: 1,
+    date: { day: '15', month: 'Jul', year: '2025' },
+    title: 'Community Service Initiative',
+    subtitle: 'Volunteer Program',
+    time: '9:00 AM - 1:00 PM',
+    day: 'Tuesday',
+    location: 'Mumbai',
+    image: `${BASE_URL}images/photos/image2.jpeg`,
+    eventDate: new Date(2025, 6, 15),
+    tentativeMonth: '7',
+    tentativeYear: '2025',
+    closestLocation: {
+      date: '15 Jul 2025',
+      time: '9:00 AM - 1:00 PM',
+      location: 'Mumbai'
+    }
+  },
+  {
+    eventId: 2,
+    date: { day: '22', month: 'Jul', year: '2025' },
+    title: 'Environmental Awareness Drive',
+    subtitle: 'Go Green Initiative',
+    time: '8:30 AM - 12:30 PM',
+    day: 'Tuesday',
+    location: 'Baddi',
+    image: `${BASE_URL}images/photos/image3.jpeg`,
+    eventDate: new Date(2025, 6, 22),
+    tentativeMonth: '7',
+    tentativeYear: '2025',
+    closestLocation: {
+      date: '22 Jul 2025',
+      time: '8:30 AM - 12:30 PM',
+      location: 'Baddi'
+    }
+  },
+  {
+    eventId: 3,
+    date: { day: '05', month: 'Aug', year: '2025' },
+    title: 'Health & Wellness Campaign',
+    subtitle: 'Community Outreach',
+    time: '10:00 AM - 2:00 PM',
+    day: 'Tuesday',
+    location: 'Sikkim',
+    image: `${BASE_URL}images/photos/image14.jpeg`,
+    eventDate: new Date(2025, 7, 5),
+    tentativeMonth: '8',
+    tentativeYear: '2025',
+    closestLocation: {
+      date: '05 Aug 2025',
+      time: '10:00 AM - 2:00 PM',
+      location: 'Sikkim'
+    }
+  }
+];
+
 const HomeUpcoming = () => {
   const [selected, setSelected] = useState(0);
-  const [events, setEvents] = useState<ProcessedEvent[]>([]);
-  const [rawEvents, setRawEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingImages, setLoadingImages] = useState<Set<number>>(new Set());
+  const [events] = useState<ProcessedEvent[]>(dummyProcessedEvents);
+  const [rawEvents] = useState<Event[]>(dummyEvents);
   const [modalOpen, setModalOpen] = useState(false);
-  const [eventDetails, setEventDetails] = useState<Event | null>(null); // Add this state
+  const [eventDetails, setEventDetails] = useState<Event | null>(null);
 
-  useEffect(() => {
-    loadUpcomingEvents();
-  }, []);
-
-  const loadUpcomingEvents = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const currentYear = new Date().getFullYear();
-      const years = [
-        currentYear.toString(),
-        (currentYear + 1).toString()
-      ];
-
-      let allEvents: Event[] = [];
-      for (const year of years) {
-        try {
-          const response = await getEventsByYear(year);
-          if (response.data && Array.isArray(response.data)) {
-            allEvents = [...allEvents, ...response.data];
-          }
-        } catch {}
-      }
-
-      // Process and filter upcoming events
-      const processedEvents = await processEventsWithImagesAndLocations(allEvents);
-      const upcomingEvents = getClosestUpcomingEvents(processedEvents, 3);
-
-      setEvents(upcomingEvents);
-
-    } catch (error) {
-      setError('Failed to load upcoming events');
-      setEvents(getFallbackEvents());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadActivityImage = async (activityId: number): Promise<string> => {
-    try {
-      setLoadingImages(prev => new Set(prev).add(activityId));
-      const response = await getActivityImage(activityId);
-      const imageData: ActivityImageResponse = response.data;
-      // Use fileName as image path if present (new API)
-      if (imageData.fileName) {
-        return imageData.fileName;
-      }
-      // Fallback to legacy base64 if present
-      if (imageData.imgFile && imageData.contentType) {
-        const dataUrl = convertToDataUrl(imageData.imgFile, imageData.contentType);
-        return dataUrl;
-      }
-      return getDefaultImage(activityId);
-    } catch {
-      return getDefaultImage(activityId);
-    } finally {
-      setLoadingImages(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(activityId);
-        return newSet;
-      });
-    }
-  };
-
-  const getDefaultImage = (activityId: number): string => {
-    const defaultImages = [
-      `${BASE_URL}images/photos/image2.jpeg`,
-      `${BASE_URL}images/photos/image3.jpeg`,
-      `${BASE_URL}images/photos/image14.jpeg`,
-      `${BASE_URL}images/events/event1.jpg`,
-      `${BASE_URL}images/events/event2.jpg`
-    ];
-    const imageIndex = activityId % defaultImages.length;
-    return defaultImages[imageIndex];
-  };
-
-  // Helper: Check if date is valid
-  const isValidDate = (dateString: string) => {
-    if (!dateString || dateString.trim() === '') return false;
-    if (dateString === "0001-01-01" || dateString.startsWith("0001-")) return false;
-    const date = new Date(dateString);
-    return !isNaN(date.getTime()) && date.getFullYear() > 1;
-  };
-
-  // Helper: Check if time is valid
-  const isValidTime = (timeString: string) => {
-    if (!timeString || timeString.trim() === '') return false;
-    if (timeString === "00:00:00" || timeString === "00:00") return false;
-    return true;
-  };
-
-  // Helper: Format time
-  const formatTime = (timeString: string) => {
-    if (!isValidTime(timeString)) return 'To be shared';
-    try {
-      const [hours, minutes] = timeString.split(':');
-      const hour = parseInt(hours, 10);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour % 12 || 12;
-      return `${displayHour}:${minutes} ${ampm}`;
-    } catch {
-      return 'To be shared';
-    }
-  };
-
-  // NEW: Fetch event locations and find the closest date/location for each event
-  const processEventsWithImagesAndLocations = async (events: Event[]): Promise<ProcessedEvent[]> => {
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1;
-
-    const filteredEvents = events.filter(event => {
-      if (event.type?.toLowerCase() !== 'annual') return false;
-      if (!event.tentativeYear || !event.tentativeMonth) return false;
-      const eventYear = parseInt(event.tentativeYear);
-      const eventMonth = parseInt(event.tentativeMonth);
-      const isUpcoming = eventYear > currentYear ||
-        (eventYear === currentYear && eventMonth >= currentMonth);
-      return isUpcoming;
-    });
-    setRawEvents(filteredEvents);
-    const processedEvents = await Promise.all(
-      filteredEvents.map(async (event) => {
-        const eventYear = parseInt(event.tentativeYear);
-        const eventMonth = parseInt(event.tentativeMonth);
-        const eventDate = new Date(eventYear, eventMonth - 1, 1);
-
-        const monthNames = [
-          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-        ];
-        const monthName = monthNames[eventMonth - 1] || 'TBD';
-
-        let image = getDefaultImage(event.eventId);
-        if (event.activityId) {
-          try {
-            image = await loadActivityImage(event.activityId);
-          } catch {}
-        }
-
-        // Fetch event locations and find the closest upcoming date/location
-        let closestLocation: { date: string; time: string; location: string } | undefined = undefined;
-        try {
-          const resp = await getEventLocationsByEventId(event.eventId);
-          const locations: EventLocation[] = resp.data || [];
-          // Filter valid, future dates
-          const now = new Date();
-          const futureLocations = locations
-            .filter(loc => isValidDate(loc.eventDate) && new Date(loc.eventDate) >= now)
-            .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
-          if (futureLocations.length > 0) {
-            const loc = futureLocations[0];
-            const dateObj = new Date(loc.eventDate);
-            closestLocation = {
-              date: dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-              time: isValidTime(loc.startTime) && isValidTime(loc.endTime)
-                ? `${formatTime(loc.startTime)} - ${formatTime(loc.endTime)}`
-                : "To be shared",
-              location: loc.locationName || "Location TBD"
-            };
-          }
-        } catch {}
-
-        return {
-          eventId: event.eventId,
-          activityId: event.activityId,
-          date: {
-            day: '01',
-            month: monthName,
-            year: event.tentativeYear
-          },
-          title: event.name,
-          subtitle: event.subName || undefined,
-          time: 'Time TBD',
-          day: 'TBD',
-          location: 'Location TBD',
-          image: image,
-          eventDate: eventDate,
-          tentativeMonth: event.tentativeMonth,
-          tentativeYear: event.tentativeYear,
-          closestLocation
-        };
-      })
-    );
-
-    return processedEvents;
-  };
-
-  const getClosestUpcomingEvents = (events: ProcessedEvent[], count: number): ProcessedEvent[] => {
-    return events
-      .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime())
-      .slice(0, count);
-  };
-
-  const getFallbackEvents = (): ProcessedEvent[] => {
-    return [
-      {
-        eventId: 1,
-        date: { day: '15', month: 'Jul', year: '2025' },
-        title: 'Community Service Initiative',
-        subtitle: 'Volunteer Program',
-        time: '9:00 AM - 1:00 PM',
-        day: 'Tuesday',
-        location: 'Mumbai',
-        image: `${BASE_URL}images/photos/image2.jpeg`,
-        eventDate: new Date(2025, 6, 15),
-        tentativeMonth: '7',
-        tentativeYear: '2025'
-      },
-      {
-        eventId: 2,
-        date: { day: '22', month: 'Jul', year: '2025' },
-        title: 'Environmental Awareness Drive',
-        subtitle: 'Go Green Initiative',
-        time: '8:30 AM - 12:30 PM',
-        day: 'Tuesday',
-        location: 'Baddi',
-        image: `${BASE_URL}images/photos/image3.jpeg`,
-        eventDate: new Date(2025, 6, 22),
-        tentativeMonth: '7',
-        tentativeYear: '2025'
-      },
-      {
-        eventId: 3,
-        date: { day: '05', month: 'Aug', year: '2025' },
-        title: 'Health & Wellness Campaign',
-        subtitle: 'Community Outreach',
-        time: '10:00 AM - 2:00 PM',
-        day: 'Tuesday',
-        location: 'Sikkim',
-        image: `${BASE_URL}images/photos/image14.jpeg`,
-        eventDate: new Date(2025, 7, 5),
-        tentativeMonth: '8',
-        tentativeYear: '2025'
-      }
-    ];
-  };
+  // Loading state (never true in static version)
+  const loading = false;
+  const error = null;
 
   // Loading state
   if (loading) {
@@ -341,7 +207,6 @@ const HomeUpcoming = () => {
             <Calendar className="w-12 h-12 text-gray-400 mb-4" />
             <p className="text-gray-600 mb-2">Unable to load upcoming events</p>
             <button
-              onClick={loadUpcomingEvents}
               className="text-[#BB1F2F] hover:text-[#9A1B29] font-medium"
             >
               Try again
@@ -396,7 +261,6 @@ const HomeUpcoming = () => {
           onClose={() => setModalOpen(false)}
           event={eventDetails}
           selectedMonth={eventDetails.tentativeMonth}
-          eventIds={eventDetails.eventId ? [eventDetails.eventId] : []}
           tentativeYear={eventDetails.tentativeYear}
           tentativeMonth={eventDetails.tentativeMonth}
           eventImageUrl={
@@ -448,15 +312,6 @@ const HomeUpcoming = () => {
                   (e.target as HTMLImageElement).src = `${BASE_URL}images/photos/image2.jpeg`;
                 }}
               />
-
-              {events[selected].activityId && loadingImages.has(events[selected].activityId!) && (
-                <div className="absolute inset-0 bg-black/20 rounded-2xl flex items-center justify-center">
-                  <div className="bg-white/90 rounded-lg p-3 flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Loading image...</span>
-                  </div>
-                </div>
-              )}
 
               {/* Date Badge */}
               <motion.div

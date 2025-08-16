@@ -1,12 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, AlertCircle } from "lucide-react";
-import {
-  getYearRoundActivities,
-  getActivityImage,
-  convertToDataUrl,
-} from "../../../api/activityApi";
-import type { Activity } from "../../../api/activityApi";
+// Removed all API imports
+// import { getYearRoundActivities, getActivityImage, convertToDataUrl } from "../../../api/activityApi";
+// import type { Activity } from "../../../api/activityApi";
+// import { getEventsByYear } from "../../../api/eventApi";
+// import type { Event } from "../../../api/eventApi";
 import {
   sectionVariants,
   fadeInVariants,
@@ -14,151 +13,135 @@ import {
   textVariants,
 } from "../../../utils/animationVariants";
 import EventDetailsModal from "../../ui/modals/EventDetailsModal";
-import { getEventsByYear } from "../../../api/eventApi";
-import type { Event } from "../../../api/eventApi";
 
-// Helper function to check if activity contains "test" (case-insensitive)
-const containsTest = (activity: Activity): boolean => {
-  const testPattern = /test/i;
-  return (
-    testPattern.test(activity.name) ||
-    (activity.subName && testPattern.test(activity.subName)) ||
-    testPattern.test(activity.description)
-  );
-};
-
-interface ActivityWithImage extends Activity {
-  imageDataUrl?: string;
-  imageLoading?: boolean;
-  imageError?: boolean;
+// Dummy Activity type
+interface Activity {
+  activityId: number;
+  name: string;
+  subName?: string;
+  description?: string;
 }
 
+// Dummy Event type
+interface Event {
+  eventId: number;
+  activityId: number;
+  name: string;
+  subName?: string;
+  description?: string;
+  tentativeMonth?: string;
+  tentativeYear?: string;
+  enableConf?: string;
+  enableComp?: string;
+  enableCert?: string;
+  type?: string;
+  status?: string;
+  finYear?: string;
+}
+
+// Dummy activities data
+const dummyActivities: Activity[] = [
+  {
+    activityId: 1,
+    name: "Community Clean-Up",
+    subName: "Environment",
+    description: "Help clean up local parks and public spaces.",
+  },
+  {
+    activityId: 2,
+    name: "Literacy Program",
+    subName: "Education",
+    description: "Volunteer to teach reading and writing skills.",
+  },
+  {
+    activityId: 3,
+    name: "Blood Donation Drive",
+    subName: "Health",
+    description: "Participate in organizing blood donation camps.",
+  },
+];
+
+// Dummy events data mapped by activityId
+const dummyEvents: Record<number, Event[]> = {
+  1: [
+    {
+      eventId: 101,
+      activityId: 1,
+      name: "Community Clean-Up",
+      subName: "Environment",
+      description: "Help clean up local parks and public spaces.",
+      tentativeMonth: "April",
+      tentativeYear: "2025",
+      enableConf: "true",
+      enableComp: "false",
+      enableCert: "true",
+      type: "year-round",
+      status: "active",
+      finYear: "2025-2026",
+    },
+  ],
+  2: [
+    {
+      eventId: 102,
+      activityId: 2,
+      name: "Literacy Program",
+      subName: "Education",
+      description: "Volunteer to teach reading and writing skills.",
+      tentativeMonth: "May",
+      tentativeYear: "2025",
+      enableConf: "true",
+      enableComp: "false",
+      enableCert: "true",
+      type: "year-round",
+      status: "active",
+      finYear: "2025-2026",
+    },
+  ],
+  3: [
+    {
+      eventId: 103,
+      activityId: 3,
+      name: "Blood Donation Drive",
+      subName: "Health",
+      description: "Participate in organizing blood donation camps.",
+      tentativeMonth: "June",
+      tentativeYear: "2025",
+      enableConf: "true",
+      enableComp: "false",
+      enableCert: "true",
+      type: "year-round",
+      status: "active",
+      finYear: "2025-2026",
+    },
+  ],
+};
+
+const dummyImages: Record<number, string> = {
+  1: "/images/photos/image1.jpeg",
+  2: "/images/photos/image2.jpeg",
+  3: "/images/photos/image3.jpeg",
+};
+
 const HomeYearRound = () => {
-  const [activities, setActivities] = useState<ActivityWithImage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use dummy data instead of API
+  const [activities] = useState(
+    dummyActivities.map((activity) => ({
+      ...activity,
+      imageDataUrl: dummyImages[activity.activityId],
+      imageLoading: false,
+      imageError: false,
+    }))
+  );
+  const [error] = useState<string | null>(null);
+  const [isLoading] = useState(false);
 
   // For modal functionality
   const [selectedActivity, setSelectedActivity] =
-    useState<ActivityWithImage | null>(null);
+    useState<typeof activities[0] | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [activityEvents, setActivityEvents] = useState<Record<number, Event[]>>(
-    {}
-  );
-  const [activityEventMeta, setActivityEventMeta] = useState<
-    Record<
-      number,
-      { tentativeMonth: string; tentativeYear: string } | undefined
-    >
-  >({});
 
-  const loadActivityImage = async (
-    activityId: number
-  ): Promise<string | null> => {
-    try {
-      const response = await getActivityImage(activityId);
-      const imageData = response.data;
-      // Use fileName as image path if present (new API)
-      if (imageData.fileName) {
-        return imageData.fileName;
-      }
-      // Fallback to legacy base64 if present
-      if (imageData.imgFile && imageData.contentType) {
-        return convertToDataUrl(imageData.imgFile, imageData.contentType);
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
-  const fetchYearRoundActivities = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await getYearRoundActivities();
-      const filteredActivities = response.data.filter(
-        (activity) => !containsTest(activity)
-      );
-      const activitiesData = filteredActivities.map((activity) => ({
-        ...activity,
-        imageLoading: true,
-        imageError: false,
-      }));
-      setActivities(activitiesData);
-
-      // Load images for each activity
-      for (let i = 0; i < activitiesData.length; i++) {
-        const activity = activitiesData[i];
-        const imageDataUrl = await loadActivityImage(activity.activityId);
-        setActivities((prevActivities) =>
-          prevActivities.map((act) =>
-            act.activityId === activity.activityId
-              ? {
-                  ...act,
-                  imageDataUrl: imageDataUrl || undefined,
-                  imageLoading: false,
-                  imageError: !imageDataUrl,
-                }
-              : act
-          )
-        );
-      }
-    } catch (err) {
-      setError("An unexpected error occurred while loading activities");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch all events for the current year and group by activityId
-  //@ts-ignore
-  const fetchEventsAndMeta = async (activities: ActivityWithImage[]) => {
-    try {
-      const year = new Date().getFullYear();
-      const eventsResp = await getEventsByYear(year);
-      const events: Event[] = eventsResp.data;
-
-      // Group events by activityId
-      const grouped: Record<number, Event[]> = {};
-      const meta: Record<
-        number,
-        { tentativeMonth: string; tentativeYear: string } | undefined
-      > = {};
-      for (const event of events) {
-        if (!grouped[event.activityId]) grouped[event.activityId] = [];
-        grouped[event.activityId].push(event);
-        // Save tentativeMonth and tentativeYear for each activityId (first event found)
-        if (!meta[event.activityId]) {
-          meta[event.activityId] = {
-            tentativeMonth: event.tentativeMonth,
-            tentativeYear: event.tentativeYear,
-          };
-        }
-      }
-      setActivityEvents(grouped);
-      setActivityEventMeta(meta);
-    } catch {
-      setActivityEvents({});
-      setActivityEventMeta({});
-    }
-  };
-
-  useEffect(() => {
-    fetchYearRoundActivities();
-    // eslint-disable-next-line
-  }, []);
-
-  useEffect(() => {
-    if (activities.length > 0) {
-      fetchEventsAndMeta(activities);
-    }
-    // eslint-disable-next-line
-  }, [activities.length]);
-
-  // Handler for View Details (same as annual volunteer year round)
-  const handleViewDetails = (activity: ActivityWithImage) => {
+  // Handler for View Details
+  const handleViewDetails = (activity: typeof activities[0]) => {
     setSelectedActivity(activity);
     setModalOpen(true);
   };
@@ -201,12 +184,6 @@ const HomeYearRound = () => {
                 Error Loading Activities
               </h3>
               <p className="text-red-600 mb-4">{error}</p>
-              <button
-                onClick={fetchYearRoundActivities}
-                className="flex items-center gap-2 mx-auto px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
-              >
-                Retry
-              </button>
             </div>
           ) : activities.length === 0 ? (
             <motion.div
@@ -288,17 +265,15 @@ const HomeYearRound = () => {
         event={
           selectedActivity
             ? (
-                activityEvents[selectedActivity.activityId]?.[0] ||
+                dummyEvents[selectedActivity.activityId]?.[0] ||
                 {
                   eventId: 0,
                   activityId: selectedActivity.activityId,
                   name: selectedActivity.name,
                   subName: selectedActivity.subName,
                   description: selectedActivity.description,
-                  tentativeMonth:
-                    activityEventMeta[selectedActivity.activityId]?.tentativeMonth ?? "",
-                  tentativeYear:
-                    activityEventMeta[selectedActivity.activityId]?.tentativeYear ?? "",
+                  tentativeMonth: "",
+                  tentativeYear: "",
                   enableConf: "false",
                   enableComp: "false",
                   enableCert: "false",
@@ -324,27 +299,22 @@ const HomeYearRound = () => {
               }
         }
         selectedMonth={
-          selectedActivity && activityEventMeta[selectedActivity.activityId]
-            ? activityEventMeta[selectedActivity.activityId]?.tentativeMonth ?? undefined
+          selectedActivity
+            ? dummyEvents[selectedActivity.activityId]?.[0]?.tentativeMonth
             : undefined
         }
-        eventIds={
-          selectedActivity && activityEvents[selectedActivity.activityId]
-            ? activityEvents[selectedActivity.activityId].map((e) => e.eventId)
-            : []
-        }
         tentativeYear={
-          selectedActivity && activityEventMeta[selectedActivity.activityId]
-            ? activityEventMeta[selectedActivity.activityId]?.tentativeYear
+          selectedActivity
+            ? dummyEvents[selectedActivity.activityId]?.[0]?.tentativeYear
             : undefined
         }
         tentativeMonth={
-          selectedActivity && activityEventMeta[selectedActivity.activityId]
-            ? activityEventMeta[selectedActivity.activityId]?.tentativeMonth
+          selectedActivity
+            ? dummyEvents[selectedActivity.activityId]?.[0]?.tentativeMonth
             : undefined
         }
         isYearRound={true}
-        eventImageUrl={selectedActivity?.imageDataUrl ?? null} // <-- Pass the image URL here
+        eventImageUrl={selectedActivity?.imageDataUrl ?? null}
       />
     </>
   );
