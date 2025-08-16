@@ -17,20 +17,13 @@ import {
   textVariants,
   cardVariants,
 } from "../utils/animationVariants";
-import {
-  getMyVolunteerStatus,
-  getVolunteerDetailsByVId,
-} from "../api/volunteerApi";
-import {
-  createSuggestion,
-  SUGGESTION_TYPES,
-  validateFile,
-
-} from "../api/suggestionApi";
-import { getCurrentUserDetails } from "../utils/volunteerFormHelpers";
-import { getExpHubApproved } from "../api/experienceApi";
+// Removed API imports
+// import { getMyVolunteerStatus, getVolunteerDetailsByVId } from "../api/volunteerApi";
+// import { createSuggestion, SUGGESTION_TYPES, validateFile } from "../api/suggestionApi";
+// import { getCurrentUserDetails } from "../utils/volunteerFormHelpers";
+// import { getExpHubApproved } from "../api/experienceApi";
+// import { getFeedbackDetails } from "../api/feedbackApi";
 import ExperienceOverlay from "../components/pages/experience/ExperienceOverlay";
-import { getFeedbackDetails } from "../api/feedbackApi"; // <-- Add this import
 
 const BASE_URL = import.meta.env.BASE_URL || "/";
 
@@ -55,6 +48,113 @@ export interface MyVolunteerStatusEvent {
   rating: number;
 }
 
+// Dummy data for attended events
+const dummyAttendedEvents: MyVolunteerStatusEvent[] = [
+  {
+    volunteerId: 1,
+    eventLocationId: 101,
+    eventName: "Tree Plantation Drive",
+    eventVenue: "City Park, Mumbai",
+    eventDate: "2025-06-15",
+    eventStime: "09:00:00",
+    eventEtime: "13:00:00",
+    eventLocationName: "Mumbai",
+    employeeId: 1001,
+    employeeName: "John Doe",
+    employeeEmailId: "john.doe@company.com",
+    employeeDesig: "Software Engineer",
+    status: "A",
+    addedBy: 1,
+    addedOn: "2025-06-01",
+    enableConf: "true",
+    enableComp: "true",
+    rating: 5,
+  },
+  {
+    volunteerId: 2,
+    eventLocationId: 102,
+    eventName: "Blood Donation Camp",
+    eventVenue: "Community Hall, Delhi",
+    eventDate: "2025-08-10",
+    eventStime: "10:00:00",
+    eventEtime: "16:00:00",
+    eventLocationName: "Delhi",
+    employeeId: 1001,
+    employeeName: "John Doe",
+    employeeEmailId: "john.doe@company.com",
+    employeeDesig: "Software Engineer",
+    status: "A",
+    addedBy: 1,
+    addedOn: "2025-08-01",
+    enableConf: "true",
+    enableComp: "false",
+    rating: 4,
+  },
+];
+
+// Dummy user details
+const dummyUserDetails = {
+  empcode: "EMP001",
+  employeeId: 1001,
+  name: "John Doe",
+  email: "john.doe@company.com",
+  designation: "Software Engineer",
+};
+
+// Dummy approved experiences
+const dummyApprovedExperiences = [
+  {
+    suggestionId: 1,
+    description:
+      "Participating in the tree plantation drive was an incredible experience. I felt a deep connection with nature and realized how small actions can make a big difference for our environment.",
+    employeeName: "Jane Smith",
+    status: "A",
+    type: "E",
+    filePath:
+      "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    suggestionId: 2,
+    description:
+      "Volunteering at the blood donation camp taught me the importance of giving back to the community. Seeing the smiles on people's faces when they knew they were helping save lives was priceless.",
+    employeeName: "Mike Johnson",
+    status: "A",
+    type: "E",
+    filePath:
+      "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    suggestionId: 3,
+    description:
+      "The literacy program opened my eyes to the power of education. Teaching children to read and write reminded me how fortunate I am and motivated me to continue volunteering.",
+    employeeName: "Sarah Williams",
+    status: "A",
+    type: "E",
+    filePath:
+      "https://images.unsplash.com/photo-1497486751825-1233686d5d80?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    suggestionId: 4,
+    description:
+      "Cleaning up the local park with my colleagues was both fun and meaningful. We removed tons of waste and made the space beautiful again for families to enjoy.",
+    employeeName: "David Brown",
+    status: "A",
+    type: "E",
+    filePath:
+      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    suggestionId: 5,
+    description:
+      "Working at the elderly care center was emotionally rewarding. The stories and wisdom shared by the residents enriched my perspective on life and aging gracefully.",
+    employeeName: "Lisa Davis",
+    status: "A",
+    type: "E",
+    filePath:
+      "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=800&q=80",
+  },
+];
+
 // Add this helper function before your component:
 function truncateText(text: string, maxLen: number) {
   if (!text) return "";
@@ -64,47 +164,33 @@ function truncateText(text: string, maxLen: number) {
 export default function ExperiencePage() {
   // Modal states
   const [showExperienceModal, setShowExperienceModal] = useState(false);
-  const [attendedEvents, setAttendedEvents] = useState<
-    MyVolunteerStatusEvent[]
-  >([]);
-  const [selectedEvent, setSelectedEvent] =
-    useState<MyVolunteerStatusEvent | null>(null);
-  const [actualEventId, setActualEventId] = useState<number | null>(null);
+  const [attendedEvents] = useState<MyVolunteerStatusEvent[]>(dummyAttendedEvents);
+  const [selectedEvent, setSelectedEvent] = useState<MyVolunteerStatusEvent | null>(null);
   const [experienceText, setExperienceText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   // User details state
-  const [userDetails, setUserDetails] = useState<any>(null);
-  const [userLoading, setUserLoading] = useState(false);
+  const [userDetails] = useState(dummyUserDetails);
 
   // Approved experiences state
-  const [approvedExperiences, setApprovedExperiences] = useState<any[]>([]);
-  const [approvedImages, setApprovedImages] = useState<Record<number, string>>(
-    {}
-  );
-  const [approvedLoading, setApprovedLoading] = useState(false);
+  const [approvedExperiences] = useState(dummyApprovedExperiences);
+  const [approvedImages, setApprovedImages] = useState<Record<number, string>>({});
+  const [approvedLoading] = useState(false);
 
-  // Masonry image dimensions state (HOOKS MUST BE AT TOP LEVEL)
-  const [imageDimensions, setImageDimensions] = useState<
-    Record<number, { width: number; height: number }>
-  >({});
+  // Masonry image dimensions state
+  const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
 
   // Overlay state
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [overlayExp, setOverlayExp] = useState<any | null>(null);
   const [overlayIndex, setOverlayIndex] = useState<number>(-1);
 
-  // Add state for existing experience for selected event
-  const [existingExperience, setExistingExperience] = useState<{
-    description: string;
-    suggestionId?: number;
-    feedbackDate?: string;
-  } | null>(null);
+  // State for existing experience for selected event (always null in static version)
+  const [existingExperience] = useState<{ description: string; suggestionId?: number; feedbackDate?: string; } | null>(null);
 
   // Disable page scroll when modal is open
   useEffect(() => {
@@ -118,59 +204,14 @@ export default function ExperiencePage() {
     };
   }, [showExperienceModal]);
 
-  // Load user details on component mount
+  // Setup approved images from filePath
   useEffect(() => {
-    const loadUserDetails = async () => {
-      try {
-        setUserLoading(true);
-        const details = await getCurrentUserDetails();
-        setUserDetails(details);
-      } catch (error) {
-        setError("Failed to load user details. Please login again.");
-      } finally {
-        setUserLoading(false);
-      }
-    };
-    loadUserDetails();
-  }, []);
-
-  // Fetch all approved experiences and their images
-  useEffect(() => {
-    const fetchApprovedExperiences = async () => {
-      setApprovedLoading(true);
-      try {
-        const res = await getExpHubApproved();
-        const experiences = res.data.filter(
-          (exp) =>
-            exp.status === "A" && (exp.type === "E" || exp.type === undefined)
-        );
-        setApprovedExperiences(experiences);
-
-        
-        
-        // New logic: use filePath directly
-        const imageMap: Record<number, string> = {};
-        experiences.forEach((exp: any) => {
-          imageMap[exp.suggestionId] = exp.filePath || "";
-        });
-        setApprovedImages(imageMap);
-      } catch (e) {
-        setApprovedExperiences([]);
-        setApprovedImages({});
-      } finally {
-        setApprovedLoading(false);
-      }
-    };
-    fetchApprovedExperiences();
-
-    // Cleanup object URLs on unmount
-    return () => {
-      Object.values(approvedImages).forEach((url) => {
-        if (url) URL.revokeObjectURL(url);
-      });
-    };
-    // eslint-disable-next-line
-  }, []);
+    const imageMap: Record<number, string> = {};
+    approvedExperiences.forEach((exp) => {
+      imageMap[exp.suggestionId] = exp.filePath || "";
+    });
+    setApprovedImages(imageMap);
+  }, [approvedExperiences]);
 
   // Dynamically get image dimensions for masonry
   useEffect(() => {
@@ -200,73 +241,21 @@ export default function ExperiencePage() {
     if (approvedExperiences.length && Object.keys(approvedImages).length) {
       loadDimensions();
     }
-    // eslint-disable-next-line
   }, [approvedExperiences, approvedImages]);
-
-  // Load attended events
-  const loadAttendedEvents = async () => {
-    if (!userDetails?.empcode) {
-      setError("Employee code not found. Please login again.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError("");
-      const response = await getMyVolunteerStatus(userDetails.empcode);
-
-      if (!response.data || !Array.isArray(response.data)) {
-        setError("Invalid response from server");
-        return;
-      }
-
-      // Filter attended events - check for both 'A' and 'Attended' status
-      const attended = response.data.filter((event: MyVolunteerStatusEvent) => {
-        const isAttended = event.status === "A" || event.status === "Attended";
-        return isAttended;
-      });
-
-      // Only filter out events with completely missing data
-      const validEvents = attended.filter((event: MyVolunteerStatusEvent) => {
-        const hasValidName = event.eventName && event.eventName.trim() !== "";
-        const hasValidId = event.volunteerId > 0;
-        return hasValidName && hasValidId;
-      });
-
-      setAttendedEvents(validEvents);
-    } catch (error) {
-      setError("Failed to load your attended events. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Handle modal open
   const handleOpenExperienceModal = () => {
-    if (!userDetails?.empcode) {
-      setError("Employee details not loaded. Please wait or refresh the page.");
-      return;
-    }
-
     setShowExperienceModal(true);
-
-    // Clear previous state
-    setAttendedEvents([]);
     setSelectedEvent(null);
-    setActualEventId(null);
     setExperienceText("");
     setMessage("");
     setError("");
-
-    // Call API immediately
-    loadAttendedEvents();
   };
 
   // Handle modal close
   const handleCloseExperienceModal = () => {
     setShowExperienceModal(false);
     setSelectedEvent(null);
-    setActualEventId(null);
     setExperienceText("");
     setSelectedFile(null);
     setFileError("");
@@ -279,10 +268,18 @@ export default function ExperiencePage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file
-    const validation = validateFile(file);
-    if (!validation.isValid) {
-      setFileError(validation.error || "Invalid file");
+    // Simple file validation (no API call)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+
+    if (!allowedTypes.includes(file.type)) {
+      setFileError("Please select a valid image file (JPEG, PNG, GIF)");
+      setSelectedFile(null);
+      return;
+    }
+
+    if (file.size > maxSize) {
+      setFileError("File size must be less than 5MB");
       setSelectedFile(null);
       return;
     }
@@ -297,64 +294,15 @@ export default function ExperiencePage() {
     setFileError("");
   };
 
-  // Handle event selection and fetch actual eventId
-  const handleSelectEvent = async (event: MyVolunteerStatusEvent) => {
+  // Handle event selection
+  const handleSelectEvent = (event: MyVolunteerStatusEvent) => {
     setSelectedEvent(event);
-    setActualEventId(null);
-    try {
-      const res = await getVolunteerDetailsByVId(event.volunteerId);
-      setActualEventId(res.data.eventId);
-    } catch (e) {
-      setActualEventId(null);
-      setError("Could not fetch event details.");
-    }
   };
 
-  // Fetch existing experience for selected event and user
-  useEffect(() => {
-    const fetchExistingExperience = async () => {
-      if (!selectedEvent) {
-        setExistingExperience(null);
-        return;
-      }
-      try {
-        // Use type = "E" for experience
-        const res = await getFeedbackDetails(selectedEvent.volunteerId, "E");
-        if (
-          res.data &&
-          Array.isArray(res.data) &&
-          res.data.length > 0
-        ) {
-          const exp = res.data[0];
-          setExistingExperience({
-            description: exp.description,
-            suggestionId: exp.suggestionId,
-            feedbackDate: exp.feedbackDate,
-          });
-        } else {
-          setExistingExperience(null);
-        }
-      } catch {
-        setExistingExperience(null);
-      }
-    };
-    fetchExistingExperience();
-  }, [selectedEvent]);
-
-  // Handle experience submission
+  // Handle experience submission (static demo)
   const handleSubmitExperience = async () => {
     if (!selectedEvent || !experienceText.trim()) {
       setError("Please select an event and write your experience");
-      return;
-    }
-
-    if (!userDetails?.employeeId) {
-      setError("Employee ID not found. Please login again.");
-      return;
-    }
-
-    if (!actualEventId) {
-      setError("Event details not loaded. Please try again.");
       return;
     }
 
@@ -373,31 +321,19 @@ export default function ExperiencePage() {
       setError("");
       setMessage("");
 
-      // Use the correct eventId
-      const experienceData = {
-        eventId: actualEventId,
-        description: experienceText.trim(),
-        employeeId: userDetails.employeeId,
-        volunteerId: selectedEvent.volunteerId,
-        type: SUGGESTION_TYPES.EXPERIENCE, // 'E' for Experience
-        file: selectedFile, // Now compulsory
-      };
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const response = await createSuggestion(experienceData);
+      setMessage("Your experience has been submitted successfully!");
+      setExperienceText("");
+      setSelectedEvent(null);
+      setSelectedFile(null);
+      setFileError("");
 
-      if (response.status === 200 || response.status === 201) {
-        setMessage("Your experience has been submitted successfully!");
-        setExperienceText("");
-        setSelectedEvent(null);
-        setActualEventId(null);
-        setSelectedFile(null);
-        setFileError("");
-
-        // Auto-close modal after 2 seconds
-        setTimeout(() => {
-          handleCloseExperienceModal();
-        }, 2000);
-      }
+      // Auto-close modal after 2 seconds
+      setTimeout(() => {
+        handleCloseExperienceModal();
+      }, 2000);
     } catch (error) {
       setError("Failed to submit your experience. Please try again.");
     } finally {
@@ -405,31 +341,14 @@ export default function ExperiencePage() {
     }
   };
 
-  // Update the event selection rendering to handle all events properly
+  // Render event selection
   const renderEventSelection = () => {
-    if (loading) {
-      return (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
-          <p className="text-gray-600">Loading your attended events...</p>
-        </div>
-      );
-    }
-
     if (attendedEvents.length === 0) {
       return (
         <div className="text-center py-8 text-gray-500">
           <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-300" />
           <p>You haven't attended any events yet.</p>
-          <p className="text-sm">
-            Complete some volunteering activities to share your experiences!
-          </p>
-          <button
-            onClick={loadAttendedEvents}
-            className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
-          >
-            Refresh Events
-          </button>
+          <p className="text-sm">Complete some volunteering activities to share your experiences!</p>
         </div>
       );
     }
@@ -437,8 +356,7 @@ export default function ExperiencePage() {
     return (
       <div className="space-y-2">
         <p className="text-sm text-gray-600 mb-3">
-          Found {attendedEvents.length} attended event
-          {attendedEvents.length !== 1 ? "s" : ""}
+          Found {attendedEvents.length} attended event{attendedEvents.length !== 1 ? "s" : ""}
         </p>
         <div className="grid grid-cols-1 gap-3 max-h-[60vh] overflow-y-auto pr-2">
           {attendedEvents.map((event, index) => (
@@ -454,9 +372,7 @@ export default function ExperiencePage() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h4 className="font-medium text-gray-900">
-                    {event.eventName}
-                  </h4>
+                  <h4 className="font-medium text-gray-900">{event.eventName}</h4>
                   <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 flex-wrap">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
@@ -466,35 +382,24 @@ export default function ExperiencePage() {
                       <MapPin className="w-4 h-4" />
                       <span>{event.eventLocationName}</span>
                     </div>
-                    {event.eventStime &&
-                      event.eventEtime &&
-                      event.eventStime !== "00:00:00" && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          <span>
-                            {formatTime(event.eventStime)} -{" "}
-                            {formatTime(event.eventEtime)}
-                          </span>
-                        </div>
-                      )}
+                    {event.eventStime && event.eventEtime && event.eventStime !== "00:00:00" && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{formatTime(event.eventStime)} - {formatTime(event.eventEtime)}</span>
+                      </div>
+                    )}
                   </div>
-                  {/* Venue info */}
                   {event.eventVenue && event.eventVenue.trim() !== "" && (
                     <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                      <strong>Venue:</strong>{" "}
-                      {event.eventVenue.replace(/\n/g, ", ")}
+                      <strong>Venue:</strong> {event.eventVenue.replace(/\n/g, ", ")}
                     </p>
                   )}
-                  {/* Rating display */}
                   {event.rating > 0 && (
                     <div className="flex items-center gap-1 mt-2">
                       <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span className="text-sm text-gray-600">
-                        Your rating: {event.rating}/5
-                      </span>
+                      <span className="text-sm text-gray-600">Your rating: {event.rating}/5</span>
                     </div>
                   )}
-                  {/* Status badge */}
                   <div className="flex items-center gap-2 mt-2">
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                       Attended
@@ -509,7 +414,7 @@ export default function ExperiencePage() {
     );
   };
 
-  // Fix the date formatting to handle all cases
+  // Format date for display
   const formatDate = (dateString: string) => {
     if (!dateString) return "Date not available";
     try {
@@ -553,11 +458,7 @@ export default function ExperiencePage() {
     setOverlayExp(exp);
     setOverlayOpen(true);
     setOverlayIndex(
-      typeof idx === "number"
-        ? idx
-        : approvedExperiences.findIndex(
-            (e) => e.suggestionId === exp.suggestionId
-          )
+      typeof idx === "number" ? idx : approvedExperiences.findIndex((e) => e.suggestionId === exp.suggestionId)
     );
   };
 
@@ -585,35 +486,6 @@ export default function ExperiencePage() {
       setOverlayIndex(nextIdx);
     }
   };
-
-  // Show loading state while user details are being loaded
-  if (userLoading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-          <span className="text-gray-600">Loading user details...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error if user details failed to load
-  if (!userDetails) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 mb-4">Failed to load user details</div>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -671,8 +543,7 @@ export default function ExperiencePage() {
               initial="initial"
               animate="animate"
             >
-              Through every activity, our employees live the values of care,
-              connection, and change.
+              Through every activity, our employees live the values of care, connection, and change.
             </motion.div>
 
             {/* Share Your Experience Button */}
@@ -687,7 +558,6 @@ export default function ExperiencePage() {
           </motion.div>
 
           {/* Approved Experiences Masonry Grid */}
-
           <motion.div
             className="mb-12 w-full"
             variants={cardVariants.container}
@@ -697,14 +567,10 @@ export default function ExperiencePage() {
             {approvedLoading ? (
               <div className="flex justify-center items-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                <span className="ml-2 text-gray-600">
-                  Loading approved experiences...
-                </span>
+                <span className="ml-2 text-gray-600">Loading approved experiences...</span>
               </div>
             ) : approvedExperiences.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                No approved experiences found.
-              </div>
+              <div className="text-center text-gray-500 py-8">No approved experiences found.</div>
             ) : (
               <>
                 {/* Mobile: simple vertical grid, Desktop: masonry */}
@@ -713,10 +579,7 @@ export default function ExperiencePage() {
                     const imgUrl = approvedImages[exp.suggestionId];
                     const dims = imageDimensions[exp.suggestionId];
                     const imgHeight = dims
-                      ? Math.max(
-                          180,
-                          Math.min(400, dims.height * (320 / dims.width))
-                        )
+                      ? Math.max(180, Math.min(400, dims.height * (320 / dims.width)))
                       : 240;
 
                     const formattedName =
@@ -726,13 +589,11 @@ export default function ExperiencePage() {
                             .split(" ")
                             .map(
                               (part: string) =>
-                                part.charAt(0).toUpperCase() +
-                                part.slice(1).toLowerCase()
+                                part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
                             )
                             .join(" ")
                         : "";
 
-                    // Truncate for mobile (80 chars)
                     const truncatedDesc = truncateText(exp.description, 40);
 
                     return (
@@ -782,7 +643,6 @@ export default function ExperiencePage() {
                               <ImageIcon className="w-12 h-12" />
                             </div>
                           )}
-                          {/* Overlay gradient and experience text */}
                           <div
                             className="absolute bottom-0 left-0 w-full px-4 py-4 flex flex-col justify-end"
                             style={{
@@ -797,7 +657,7 @@ export default function ExperiencePage() {
                                 className="text-white text-base font-medium italic whitespace-pre-line drop-shadow-lg"
                                 style={{ pointerEvents: "auto" }}
                               >
-                                {`“${truncatedDesc}”`}
+                                {`"${truncatedDesc}"`}
                               </div>
                             </div>
                             <div className="w-full flex justify-end">
@@ -819,17 +679,13 @@ export default function ExperiencePage() {
                   breakpointCols={{ default: 3, 1100: 2, 700: 1 }}
                   className="hidden md:flex w-auto gap-8"
                   columnClassName="masonry-column"
-                  style={{ rowGap: "3rem" }} // <-- Add this line for vertical gap
+                  style={{ rowGap: "3rem" }}
                 >
                   {approvedExperiences.map((exp, idx) => {
                     const imgUrl = approvedImages[exp.suggestionId];
                     const dims = imageDimensions[exp.suggestionId];
-                    // Increase min height for desktop images here:
                     const imgHeight = dims
-                      ? Math.max(
-                          230, // <-- increased from 120 to 220 for desktop
-                          Math.min(600, dims.height * (380 / dims.width))
-                        )
+                      ? Math.max(230, Math.min(600, dims.height * (380 / dims.width)))
                       : 320;
 
                     const formattedName =
@@ -839,19 +695,17 @@ export default function ExperiencePage() {
                             .split(" ")
                             .map(
                               (part: string) =>
-                                part.charAt(0).toUpperCase() +
-                                part.slice(1).toLowerCase()
+                                part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
                             )
                             .join(" ")
                         : "";
 
-                    // Truncate for desktop (150 chars)
                     const truncatedDesc = truncateText(exp.description, 50);
 
                     return (
                       <motion.div
                         key={exp.suggestionId}
-                        className="bg-white rounded-2xl  shadow-md border border-gray-100 overflow-hidden flex flex-col cursor-pointer"
+                        className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden flex flex-col cursor-pointer"
                         style={{
                           width: "100%",
                           breakInside: "avoid",
@@ -887,7 +741,6 @@ export default function ExperiencePage() {
                               <ImageIcon className="w-12 h-12" />
                             </div>
                           )}
-                          {/* Overlay gradient and experience text */}
                           <div
                             className="absolute bottom-0 left-0 w-full px-6 py-6 flex flex-col justify-end"
                             style={{
@@ -902,7 +755,7 @@ export default function ExperiencePage() {
                                 className="text-white text-base md:text-lg font-medium italic whitespace-pre-line drop-shadow-lg"
                                 style={{ pointerEvents: "auto" }}
                               >
-                                {`“${truncatedDesc}”`}
+                                {`"${truncatedDesc}"`}
                               </div>
                             </div>
                             <div className="w-full flex justify-end">
@@ -925,7 +778,7 @@ export default function ExperiencePage() {
         </div>
       </motion.div>
 
-      {/* Experience Modal - Wide, 2-column, disables page scroll */}
+      {/* Experience Modal */}
       {showExperienceModal && (
         <motion.div
           className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-2 md:p-6"
@@ -943,9 +796,7 @@ export default function ExperiencePage() {
             {/* Left: Events List */}
             <div className="md:w-2/5 w-full border-r border-gray-200 bg-gray-50 overflow-y-auto max-h-[95vh] p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">
-                  Select Event
-                </h2>
+                <h2 className="text-lg font-bold text-gray-900">Select Event</h2>
                 <button
                   onClick={handleCloseExperienceModal}
                   className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
@@ -1001,9 +852,7 @@ export default function ExperiencePage() {
                       <textarea
                         value={experienceText}
                         onChange={(e) =>
-                          e.target.value.length <= 400
-                            ? setExperienceText(e.target.value)
-                            : null
+                          e.target.value.length <= 400 ? setExperienceText(e.target.value) : null
                         }
                         placeholder="Tell us about your volunteering experience. What did you learn? How did it impact you or the community? What moments stood out to you?"
                         className="w-full px-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-base md:text-lg"
@@ -1024,13 +873,10 @@ export default function ExperiencePage() {
                           Minimum 50 characters recommended
                         </span>
                       </div>
-                      {/* Tip and Add Photo section only if experience does NOT exist */}
+                      {/* Add Photo section */}
                       <div className="mt-6">
-                        {/* Tip for image aspect ratios */}
                         <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800 font-medium">
-                          Tip: For best results, upload a photo in 1:1 (square) or 4:3
-                          (landscape) aspect ratio. Portrait images (3:4) are also
-                          supported.{" "}
+                          Tip: For best results, upload a photo in 1:1 (square) or 4:3 (landscape) aspect ratio. Portrait images (3:4) are also supported.
                         </div>
                         <label className="block text-sm font-medium text-gray-700 mb-3">
                           Add Photo <span className="text-red-600">*</span>
@@ -1038,7 +884,6 @@ export default function ExperiencePage() {
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
                           {selectedFile ? (
                             <div className="space-y-4">
-                              {/* File Preview */}
                               <div className="flex items-center justify-center">
                                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                                   <ImageIcon className="w-8 h-8 text-purple-600" />
@@ -1047,8 +892,7 @@ export default function ExperiencePage() {
                                       {selectedFile.name}
                                     </p>
                                     <p className="text-xs text-gray-500">
-                                      {(selectedFile.size / 1024 / 1024).toFixed(2)}{" "}
-                                      MB
+                                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                                     </p>
                                   </div>
                                   <button
@@ -1059,7 +903,6 @@ export default function ExperiencePage() {
                                   </button>
                                 </div>
                               </div>
-                              {/* Change File Button */}
                               <div>
                                 <input
                                   type="file"
@@ -1099,13 +942,10 @@ export default function ExperiencePage() {
                                   Choose Photo
                                 </label>
                               </div>
-                              <p className="text-xs text-gray-500">
-                                PNG, JPG, GIF up to 5MB
-                              </p>
+                              <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
                             </div>
                           )}
                         </div>
-                        {/* File Error */}
                         {fileError && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
                             {fileError}
@@ -1150,7 +990,7 @@ export default function ExperiencePage() {
         </motion.div>
       )}
 
-      {/* Instagram-like overlay modal with navigation */}
+      {/* Experience Overlay */}
       <ExperienceOverlay
         open={overlayOpen}
         exp={overlayExp}

@@ -311,7 +311,7 @@ const AnnualVolunteerYearRound = () => {
                     )}
                     {/* View Details Button */}
                     <button
-                      className="hidden sm:block absolute bottom-3 right-3 bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold text-sm opacity-100 transition-opacity transition-transform duration-200 cursor-pointer hover:bg-yellow-600 active:scale-95"
+                      className="hidden sm:block absolute bottom-3 right-3 bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold text-sm opacity-100 transition-transform duration-200 cursor-pointer hover:bg-yellow-600 active:scale-95"
                       onClick={() => handleOpenModal(activity)}
                       style={{ transition: 'transform 0.15s' }}
                     >

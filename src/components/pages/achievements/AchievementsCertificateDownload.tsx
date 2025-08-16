@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Loader2, Download } from "lucide-react";
-import { downloadCertificateByVolunteerId } from "../../../api/certificateApi";
 
 interface AchievementsCertificateDownloadProps {
   certificateUrl?: string; // Not used anymore, kept for backward compatibility
@@ -10,6 +9,7 @@ interface AchievementsCertificateDownloadProps {
 
 const AchievementsCertificateDownload: React.FC<AchievementsCertificateDownloadProps> = ({
   volunteerId,
+  activityName = "Event"
 }) => {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,26 +19,46 @@ const AchievementsCertificateDownload: React.FC<AchievementsCertificateDownloadP
       setError("Certificate not available.");
       return;
     }
+    
     setError(null);
     setDownloading(true);
+    
     try {
-      // Use the API to get the certificate as a blob
-      const response = await downloadCertificateByVolunteerId(String(volunteerId));
-      // Detect file type from response headers
-      const contentType = response.headers["content-type"] || "application/pdf";
-      const extension = contentType === "image/png" ? "png" : "pdf";
-      const blob = new Blob([response.data], { type: contentType });
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Create a dummy PDF content for demonstration
+      const dummyPdfContent = `
+        Certificate of Participation
+        
+        This is to certify that
+        
+        JOHN DOE
+        
+        has successfully participated in
+        
+        ${activityName.toUpperCase()}
+        
+        Date: ${new Date().toLocaleDateString()}
+        
+        Thank you for your dedication to community service!
+      `;
+      
+      // Create a simple text file as demonstration (in real app this would be a PDF)
+      const blob = new Blob([dummyPdfContent], { type: "text/plain" });
       const url = window.URL.createObjectURL(blob);
 
       // Create a temporary link to trigger download
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Certificate_${volunteerId}.${extension}`;
+      link.download = `Certificate_${volunteerId}_${activityName.replace(/\s+/g, '_')}.txt`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      
     } catch (err) {
+      console.error('Error downloading certificate:', err);
       setError("Failed to download certificate.");
     } finally {
       setDownloading(false);

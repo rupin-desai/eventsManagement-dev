@@ -11,7 +11,6 @@ interface AchievementsSmileRatingProps {
 
 const AchievementsSmileRating: React.FC<AchievementsSmileRatingProps> = ({
   rating,
-  volunteerId,
   isInteractive = false,
   onRatingChange,
   isUpdating = false
@@ -55,13 +54,19 @@ const AchievementsSmileRating: React.FC<AchievementsSmileRatingProps> = ({
     }
   };
 
-  // ✅ Handle rating click
+  // ✅ Handle rating click (static demo - no API call)
   const handleRatingClick = async (newRating: number) => {
-    if (!isInteractive || isUpdating || !onRatingChange) return;
+    if (!isInteractive || isUpdating) return;
 
     try {
       setLocalRating(newRating);
-      await onRatingChange(volunteerId, newRating);
+      
+      // Simulate API call with timeout
+      if (onRatingChange) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // In a real app, this would call the API
+        // await onRatingChange(volunteerId, newRating);
+      }
     } catch (error) {
       // Revert on error
       setLocalRating(rating);

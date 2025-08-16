@@ -14,32 +14,93 @@ import {
 } from "lucide-react";
 import { cardVariants, fadeInVariants } from "../../../utils/animationVariants";
 import AchievementsSectionHeader from "./AchievementsSectionHeader";
-import {
-  createSuggestion,
-  getSuggestionBySelfAndEvent,
-  type Suggestion,
-  type CreateSuggestionRequest,
-  SUGGESTION_TYPES,
-} from "../../../api/suggestionApi";
-import { getEventsByYear, type Event } from "../../../api/eventApi";
-import { extractEmpcodeFromClaims } from "../../../utils/volunteerFormHelpers";
-import { getUser } from "../../../api/authApi";
-import NotificationToast from "../../ui/NotificationToast"; // Add this import
+import NotificationToast from "../../ui/NotificationToast";
+
+// Dummy types
+interface Event {
+  eventId: number;
+  name: string;
+  subName?: string;
+  tentativeMonth?: string;
+  tentativeYear?: string;
+  type?: string;
+}
+
+interface Suggestion {
+  suggestionId: number;
+  description: string;
+  employeeName: string;
+  employeeDesig?: string;
+  addedOn: string;
+  type: string;
+}
+
+// Dummy data
+const dummyEvents: Event[] = [
+  {
+    eventId: 1,
+    name: "Tree Plantation Drive",
+    subName: "Environmental Initiative",
+    tentativeMonth: "8",
+    tentativeYear: "2025",
+    type: "annual",
+  },
+  {
+    eventId: 2,
+    name: "Blood Donation Camp",
+    subName: "Health Initiative",
+    tentativeMonth: "9",
+    tentativeYear: "2025",
+    type: "annual",
+  },
+  {
+    eventId: 3,
+    name: "Literacy Program",
+    subName: "Education Support",
+    tentativeMonth: "10",
+    tentativeYear: "2025",
+    type: "year-round",
+  },
+];
+
+const dummySuggestions: Suggestion[] = [
+  {
+    suggestionId: 1,
+    description: "We should provide refreshments during the event",
+    employeeName: "John Doe",
+    employeeDesig: "Software Engineer",
+    addedOn: "2025-08-15T10:30:00Z",
+    type: "SUGGESTION",
+  },
+  {
+    suggestionId: 2,
+    description: "Add more locations for better accessibility",
+    employeeName: "Jane Smith",
+    employeeDesig: "Project Manager",
+    addedOn: "2025-08-14T14:20:00Z",
+    type: "SUGGESTION",
+  },
+];
+
+const dummyUserDetails = {
+  empcode: "EMP001",
+  employeeId: 1001,
+};
 
 interface AchievementsSuggestionsProps {}
 
 const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
   // State management
   const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [employeeId, setEmployeeId] = useState<number>(0);
+  const [employeeId, setEmployeeId] = useState<number>(1001);
 
   // Year and type filters
   const [selectedYear, setSelectedYear] = useState<string>(
     new Date().getFullYear().toString()
   );
-  const [selectedEventType, setSelectedEventType] = useState<string>("annual"); // Default to annual
+  const [selectedEventType, setSelectedEventType] = useState<string>("annual");
   const [availableYears, setAvailableYears] = useState<string[]>([]);
 
   // Modal state
@@ -76,20 +137,14 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
     setAvailableYears(years);
   };
 
-  // Load employee ID
+  // Load employee ID (using dummy data)
   const loadEmployeeIdAndEvents = async () => {
     try {
       setLoading(true);
       setError(null);
 
-
-      const userClaimsResponse = await getUser();
-      const empcode = extractEmpcodeFromClaims(userClaimsResponse.data);
-      const empId = parseInt(empcode);
-
-      setEmployeeId(empId);
-      setEmployeeId(empId);
-
+      // Use dummy data
+      setEmployeeId(dummyUserDetails.employeeId);
       initializeYears();
     } catch (error) {
       console.error("❌ Error getting employee ID:", error);
@@ -98,25 +153,22 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
         type: "error",
         message: "Failed to get user information",
       });
+    } finally {
       setLoading(false);
     }
   };
 
-  // Load events by year and type
+  // Load events by year and type (using dummy data)
   const loadEventsByYear = async () => {
     try {
       setLoading(true);
       setError(null);
 
-
-      const eventsResponse = await getEventsByYear(selectedYear);
-
-      // Filter events based on selected type
-      const filteredEvents = eventsResponse.data.filter(
+      // Filter dummy events based on selected type
+      const filteredEvents = dummyEvents.filter(
         (event) => event.type?.toLowerCase() === selectedEventType.toLowerCase()
       );
 
-     
       setEvents(filteredEvents);
     } catch (error) {
       console.error("❌ Error loading events:", error);
@@ -132,73 +184,66 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
     setIsModalOpen(true);
     setNewSuggestion("");
 
-    // Load existing suggestions
+    // Load existing suggestions (dummy data)
     await loadSuggestions(event.eventId);
   };
 
   // Close modal
   const closeModal = () => {
-    // Restore body scrolling immediately
     document.body.style.overflow = "unset";
-
     setIsModalOpen(false);
     setSelectedEvent(null);
     setSuggestions([]);
     setNewSuggestion("");
   };
 
-  // Load suggestions for event
+  // Load suggestions for event (using dummy data)
+  //@ts-ignore
   const loadSuggestions = async (eventId: number) => {
     try {
       setLoadingSuggestions(true);
 
-
-      const response = await getSuggestionBySelfAndEvent(eventId, employeeId);
-      const suggestionsList = response.data || [];
-
-      setSuggestions(suggestionsList);
+      // Use dummy suggestions
+      setSuggestions(dummySuggestions);
     } catch (error) {
       console.error("❌ Error loading suggestions:", error);
-      // Don't show error for loading suggestions, just show empty list
       setSuggestions([]);
     } finally {
       setLoadingSuggestions(false);
     }
   };
 
-  // Submit new suggestion
+  // Submit new suggestion (simulated)
   const handleSubmitSuggestion = async () => {
     if (!newSuggestion.trim() || !selectedEvent || !employeeId) return;
 
     try {
       setSubmitting(true);
 
-      const suggestionData: CreateSuggestionRequest = {
-        eventId: selectedEvent.eventId,
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      setNotification({
+        type: "success",
+        message: "Suggestion submitted successfully!",
+      });
+      setNewSuggestion("");
+
+      // Add new suggestion to list
+      const newSugg: Suggestion = {
+        suggestionId: Date.now(),
         description: newSuggestion.trim(),
-        employeeId: employeeId,
-        volunteerId: 0, // Set to 0 as default since user might not be a volunteer
-        type: SUGGESTION_TYPES.SUGGESTION, // Add required type field
+        employeeName: "Current User",
+        employeeDesig: "Employee",
+        addedOn: new Date().toISOString(),
+        type: "SUGGESTION",
       };
+      setSuggestions((prev) => [newSugg, ...prev]);
 
-
-      const response = await createSuggestion(suggestionData);
-
-      if (response.status === 200 || response.status === 201) {
-        setNotification({
-          type: "success",
-          message: "Suggestion submitted successfully!",
-        });
-        setNewSuggestion("");
-
-        // Reload suggestions
-        await loadSuggestions(selectedEvent.eventId);
-
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-          setNotification(null);
-        }, 3000);
-      }
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setNotification(null);
+      }, 3000);
     } catch (error) {
       console.error("❌ Error submitting suggestion:", error);
       setNotification({
@@ -349,7 +394,7 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
               maxHeight: "90vh",
               display: "flex",
               flexDirection: "column",
-              overflow: "auto", // Make modal scrollable
+              overflow: "auto",
             }}
           >
             {/* Modal Header */}
@@ -370,7 +415,7 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
                 </div>
                 <button
                   onClick={closeModal}
-                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors ml-4 flex-shrink-0 cursor-pointer active:scale-95 transition-transform duration-200"
+                  className="p-2 text-gray-400 hover:text-gray-600  ml-4 flex-shrink-0 cursor-pointer active:scale-95 transition-transform duration-200"
                   type="button"
                 >
                   <X className="w-5 h-5" />
@@ -379,10 +424,7 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
             </div>
 
             {/* Modal Body */}
-            <div
-              className="flex-1 px-6 pb-8 pt-6"
-              // Remove overflow-y-auto here, keep it on parent
-            >
+            <div className="flex-1 px-6 pb-8 pt-6">
               {/* New Suggestion Form */}
               <div className="mb-6">
                 <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -407,7 +449,7 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
                     <button
                       onClick={handleSubmitSuggestion}
                       disabled={!newSuggestion.trim() || submitting}
-                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer active:scale-95 transition-transform duration-200 ${
+                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded  cursor-pointer active:scale-95 transition-transform duration-200 ${
                         !newSuggestion.trim() || submitting
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : "bg-yellow-600 text-white hover:bg-yellow-700"
@@ -433,7 +475,8 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
               {/* Existing Suggestions */}
               <div>
                 <h4 className="text-md font-semibold text-gray-900 mb-4">
-                  Below Write Your Suggestions ({suggestions.filter(s => s.type === SUGGESTION_TYPES.SUGGESTION).length})
+                  Below Write Your Suggestions (
+                  {suggestions.filter((s) => s.type === "SUGGESTION").length})
                 </h4>
                 {loadingSuggestions ? (
                   <div className="flex items-center justify-center py-8">
@@ -442,7 +485,8 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
                       Loading suggestions...
                     </span>
                   </div>
-                ) : suggestions.filter(s => s.type === SUGGESTION_TYPES.SUGGESTION).length === 0 ? (
+                ) : suggestions.filter((s) => s.type === "SUGGESTION").length ===
+                  0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <MessageCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                     <p className="text-sm">
@@ -457,7 +501,7 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
                     animate="animate"
                   >
                     {suggestions
-                      .filter(s => s.type === SUGGESTION_TYPES.SUGGESTION)
+                      .filter((s) => s.type === "SUGGESTION")
                       .map(renderSuggestion)}
                   </motion.div>
                 )}
@@ -470,17 +514,14 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
     );
   };
 
-  // Add this useEffect to handle body scroll when modal opens/closes
+  // Handle body scroll when modal opens/closes
   useEffect(() => {
     if (isModalOpen) {
-      // Prevent body scrolling when modal is open
       document.body.style.overflow = "hidden";
     } else {
-      // Restore body scrolling when modal is closed
       document.body.style.overflow = "unset";
     }
 
-    // Cleanup function to restore scrolling when component unmounts
     return () => {
       document.body.style.overflow = "unset";
     };
@@ -489,18 +530,21 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
   // Main render
   return (
     <>
-      <NotificationToast notification={notification} onClose={() => setNotification(null)} />
+      <NotificationToast
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
       <section className="mb-10">
         <motion.div
           variants={fadeInVariants("up", 0)}
           initial="initial"
           animate="animate"
         >
-          <AchievementsSectionHeader 
-            title="Share Your Suggestions Here For Upcoming Or Completed Events" 
-            sectionType="suggestions" 
+          <AchievementsSectionHeader
+            title="Share Your Suggestions Here For Upcoming Or Completed Events"
+            sectionType="suggestions"
           />
-          
+
           {/* Filters */}
           <div className="flex justify-center gap-4 mb-6">
             {/* Year Filter */}
@@ -539,7 +583,9 @@ const AchievementsSuggestions: React.FC<AchievementsSuggestionsProps> = () => {
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-red-600" />
                 <div>
-                  <h4 className="font-semibold text-red-900">Error Loading Events</h4>
+                  <h4 className="font-semibold text-red-900">
+                    Error Loading Events
+                  </h4>
                   <p className="text-red-700 text-sm">{error}</p>
                   <button
                     onClick={loadEventsByYear}

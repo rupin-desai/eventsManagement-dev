@@ -60,7 +60,7 @@ const CarouselOverlay: React.FC<{
       >
         {/* Close Button */}
         <button
-          className="absolute top-4 right-6 text-white z-10 bg-white/40 rounded-full p-2 hover:bg-white/70 transition-colors cursor-pointer active:scale-95 transition-transform duration-200"
+          className="absolute top-4 right-6 text-white z-10 bg-white/40 rounded-full p-2 hover:bg-white/70  cursor-pointer active:scale-95 transition-transform duration-200"
           onClick={onClose}
           aria-label="Close"
           type="button"
@@ -102,7 +102,7 @@ const CarouselOverlay: React.FC<{
         {/* Mobile Arrows at bottom center */}
         <div className="flex sm:hidden absolute bottom-6 left-1/2 -translate-x-1/2 z-20 gap-8">
           <button
-            className="bg-white/40 hover:bg-white/50 rounded-full p-3 flex items-center justify-center transition-colors cursor-pointer active:scale-95 transition-transform duration-200"
+            className="bg-white/40 hover:bg-white/50 rounded-full p-3 flex items-center justify-center  cursor-pointer active:scale-95 transition-transform duration-200"
             onClick={goPrev}
             aria-label="Previous"
             type="button"
@@ -111,7 +111,7 @@ const CarouselOverlay: React.FC<{
             <ChevronLeft className="w-7 h-7 text-white" />
           </button>
           <button
-            className="bg-white/40 hover:bg-white/50 rounded-full p-3 flex items-center justify-center transition-colors cursor-pointer active:scale-95 transition-transform duration-200"
+            className="bg-white/40 hover:bg-white/50 rounded-full p-3 flex items-center justify-center  cursor-pointer active:scale-95 transition-transform duration-200"
             onClick={goNext}
             aria-label="Next"
             type="button"

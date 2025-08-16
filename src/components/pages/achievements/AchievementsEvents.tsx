@@ -12,27 +12,10 @@ import { cardVariants } from "../../../utils/animationVariants";
 import type { 
   VolunteerWithEventDetails, 
   CategorizedEvents, 
-  ExpandedSections 
+  ExpandedSections
 } from "./achievementsEvents/types/AchievementEventsTypes";
-import { 
-  getMyVolunteerStatus,
-  getVolunteerDetailsByVId,
-  updateVolunteerRating,
-  getVolunteersBySelfAndEvent,
-  type VolunteerDetails
-} from "../../../api/volunteerApi";
-import { getEventsByYear, type Event } from "../../../api/eventApi";
-import { extractEmpcodeFromClaims } from "../../../utils/volunteerFormHelpers";
-import { getUser } from "../../../api/authApi";
-import { getEmployeeDetailsById } from "../../../api/employeeApi";
-import { updateVolunteerStatusList } from "../../../api/admin/volunteerAdminApi";
-import { getFeedbackDetails, type FeedbackDetails } from "../../../api/feedbackApi";
-import { 
-  createSuggestion, 
-  type CreateSuggestionRequest,
-  SUGGESTION_TYPES 
-} from "../../../api/suggestionApi";
-import NotificationToast from "../../ui/NotificationToast"; // Add this import
+import { dummyVolunteerEvents } from "./achievementsEvents/types/AchievementEventsTypes";
+import NotificationToast from "../../ui/NotificationToast";
 
 interface AchievementEventsProps {}
 
@@ -46,11 +29,40 @@ interface AttendedEventCardProps {
   getStatusColor: (status: string) => string;
   getStatusText: (status: string, isUpcoming?: boolean) => string;
   employeeId: string;
-  eventId?: number; // Add eventId for feedback
+  eventId?: number;
+}
+
+// Dummy feedback details
+interface DummyFeedbackDetails {
+  description: string;
+  rating: number;
+  feedbackDate: string;
 }
 
 const RATING_CONTAINER_HEIGHT = 160; // px, adjust as needed
 const FEEDBACK_BOX_HEIGHT = 65; // px, adjust as needed
+
+// Dummy feedback data
+const dummyFeedbackData: Record<number, DummyFeedbackDetails> = {
+  1: {
+    description: "Great event! Really enjoyed participating and making a difference.",
+    rating: 5,
+    feedbackDate: "2025-06-20"
+  },
+  2: {
+    description: "Well organized blood donation camp. Felt good contributing to the cause.",
+    rating: 4,
+    feedbackDate: "2025-08-15"
+  }
+};
+
+// Dummy user details
+const dummyUserDetails = {
+  empcode: "EMP001",
+  employeeId: 1001,
+  name: "John Doe",
+  email: "john.doe@company.com"
+};
 
 const AttendedEventCard: React.FC<AttendedEventCardProps> = ({
   volunteer,
@@ -63,7 +75,7 @@ const AttendedEventCard: React.FC<AttendedEventCardProps> = ({
   employeeId,
   eventId
 }) => {
-  const [feedbackDetails, setFeedbackDetails] = useState<FeedbackDetails | null>(null);
+  const [feedbackDetails, setFeedbackDetails] = useState<DummyFeedbackDetails | null>(null);
   const [loadingFeedback, setLoadingFeedback] = useState(true);
   const [feedbackText, setFeedbackText] = useState('');
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
@@ -81,17 +93,15 @@ const AttendedEventCard: React.FC<AttendedEventCardProps> = ({
     try {
       setLoadingFeedback(true);
       
-      const response = await getFeedbackDetails(volunteer.volunteerId, "F");
-      const feedbackList = response.data || [];
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Get the most recent feedback for this volunteer
-      const latestFeedback = feedbackList.length > 0 ? feedbackList[0] : null;
-      
-      setFeedbackDetails(latestFeedback);
+      // Get dummy feedback data
+      const feedback = dummyFeedbackData[volunteer.volunteerId] || null;
+      setFeedbackDetails(feedback);
       
     } catch (error) {
       console.error('❌ Error loading feedback details:', error);
-      // Don't show error, just proceed without feedback
       setFeedbackDetails(null);
     } finally {
       setLoadingFeedback(false);
@@ -124,30 +134,25 @@ const AttendedEventCard: React.FC<AttendedEventCardProps> = ({
       setFeedbackError('');
       setFeedbackMessage('');
 
-      const feedbackData: CreateSuggestionRequest = {
-        eventId: eventId || 0,
-        description: feedbackText.trim(),
-        employeeId: parseInt(employeeId),
-        volunteerId: volunteer.volunteerId,
-        type: SUGGESTION_TYPES.FEEDBACK // Add required type field for feedback
-      };
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
+      setFeedbackMessage('Feedback submitted successfully!');
+      setFeedbackText('');
+      setShowFeedbackForm(false);
       
-      const response = await createSuggestion(feedbackData);
-
-      if (response.status === 200 || response.status === 201) {
-        setFeedbackMessage('Feedback submitted successfully!');
-        setFeedbackText('');
-        setShowFeedbackForm(false);
-        
-        // Reload feedback details
-        await loadFeedbackDetails();
-        
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-          setFeedbackMessage('');
-        }, 3000);
-      }
+      // Simulate feedback creation
+      const newFeedback: DummyFeedbackDetails = {
+        description: feedbackText.trim(),
+        rating: volunteer.rating || 0,
+        feedbackDate: new Date().toISOString()
+      };
+      setFeedbackDetails(newFeedback);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setFeedbackMessage('');
+      }, 3000);
     } catch (error) {
       console.error('❌ Error submitting feedback:', error);
       setFeedbackError('Failed to submit feedback. Please try again.');
@@ -445,18 +450,17 @@ const AttendedEventCard: React.FC<AttendedEventCardProps> = ({
 };
 
 const AchievementEvents: React.FC<AchievementEventsProps> = () => {
-  // ✅ ALL BUSINESS LOGIC STAYS HERE
-  const [allMyEvents, setAllMyEvents] = useState<VolunteerWithEventDetails[]>([]);
+  // Use dummy data instead of API
+  const [allMyEvents, setAllMyEvents] = useState<VolunteerWithEventDetails[]>(dummyVolunteerEvents);
   const [categorizedEvents, setCategorizedEvents] = useState<CategorizedEvents>({
     upcoming: [],
     attended: [],
     other: []
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Set to false since we're using dummy data
   const [error, setError] = useState<string | null>(null);
-  const [employeeId, setEmployeeId] = useState<string>("");
-  const [employeeName, setEmployeeName] = useState<string>("My");
-  const [eventsMap, setEventsMap] = useState<Map<string, Event>>(new Map()); // Store events by name for eventId lookup
+  const [employeeId, setEmployeeId] = useState<string>(dummyUserDetails.empcode);
+  const [employeeName, setEmployeeName] = useState<string>(dummyUserDetails.name);
   
   const [updatingStatus, setUpdatingStatus] = useState<Set<number>>(new Set());
   const [loadingRatings, setLoadingRatings] = useState<Set<number>>(new Set());
@@ -474,307 +478,25 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
     loadEmployeeIdAndEvents();
   }, []);
 
-  useEffect(() => {
-    const fetchEmployeeName = async () => {
-      try {
-        const userClaimsResponse = await getUser();
-        const empcode = extractEmpcodeFromClaims(userClaimsResponse.data);
-        const employeeResponse = await getEmployeeDetailsById(empcode);
-        // API returns an object or array, handle both
-        const data = employeeResponse.data;
-        let name = "My";
-        if (Array.isArray(data) && data.length > 0) {
-          name = data[0].name;
-        } else if (data && data.name) {
-          name = data.name;
-        }
-        setEmployeeName(name);
-      } catch {
-        setEmployeeName("My");
-      }
-    };
-    fetchEmployeeName();
-  }, []);
-
-  // ✅ ALL BUSINESS LOGIC METHODS STAY HERE
   const loadEmployeeIdAndEvents = async () => {
     try {
       setLoading(true);
       setError(null);
       
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const userClaimsResponse = await getUser();
-      const empcode = extractEmpcodeFromClaims(userClaimsResponse.data);
+      // Use dummy data
+      setEmployeeId(dummyUserDetails.empcode);
+      setEmployeeName(dummyUserDetails.name);
       
-      setEmployeeId(empcode);
-      
-      await loadMyVolunteerEvents(empcode);
-      
-    } catch (error) {
-      console.error('❌ Error getting employee ID:', error);
-      setError('Failed to get user information');
-      setLoading(false);
-    }
-  };
-
-  const loadMyVolunteerEvents = async (empcode: string) => {
-    try {
-      
-      // First load all events to build eventId mapping
-      await loadEventsMap();
-      
-      const volunteerStatusResponse = await getMyVolunteerStatus(empcode);
-      
-      let myVolunteers: VolunteerWithEventDetails[] = [];
-      
-      if (volunteerStatusResponse.data) {
-        const responseData = volunteerStatusResponse.data;
-        let volunteerEvents: any[] = [];
-        
-        if (Array.isArray(responseData)) {
-          volunteerEvents = responseData;
-        } else if (responseData.volunteerEvents && Array.isArray(responseData.volunteerEvents)) {
-          volunteerEvents = responseData.volunteerEvents;
-        } else if (responseData.events && Array.isArray(responseData.events)) {
-          volunteerEvents = responseData.events;
-        } else {
-          await loadAllEventsAndVolunteersOriginal(empcode);
-          return;
-        }
-        
-        
-        for (const volunteerEvent of volunteerEvents) {
-          try {
-            const enhancedVolunteer: VolunteerWithEventDetails = {
-              volunteerId: volunteerEvent.volunteerId || 0,
-              eventLocationId: volunteerEvent.eventLocationId || 0,
-              eventLocationName: volunteerEvent.eventLocationName || 'Unknown Location',
-              employeeId: parseInt(empcode),
-              employeeName: volunteerEvent.employeeName || 'Unknown',
-              employeeEmailId: volunteerEvent.employeeEmailId || '',
-              employeeDesig: volunteerEvent.employeeDesig || '',
-              status: volunteerEvent.status || 'N',
-              addedBy: volunteerEvent.addedBy || parseInt(empcode),
-              addedOn: volunteerEvent.addedOn || new Date().toISOString(),
-
-              eventName: volunteerEvent.eventName,
-              eventSubName: volunteerEvent.eventSubName,
-              tentativeMonth: volunteerEvent.tentativeMonth,
-              tentativeYear: volunteerEvent.tentativeYear,
-              eventDate: volunteerEvent.eventDate,
-              startTime: volunteerEvent.startTime,
-              endTime: volunteerEvent.endTime,
-              eventStime: volunteerEvent.eventStime,   // <-- Add this line
-              eventEtime: volunteerEvent.eventEtime,   // <-- Add this line
-              venue: volunteerEvent.venue,
-              enableConf: volunteerEvent.enableConf,
-              enableComp: volunteerEvent.enableComp || 'false',
-              rating: volunteerEvent.rating || 0,
-              detailsLoaded: volunteerEvent.rating !== undefined,
-            };
-            
-            myVolunteers.push(enhancedVolunteer);
-            
-          } catch (error) {
-            console.warn('⚠️ Error processing volunteer event:', volunteerEvent, error);
-          }
-        }
-      }
-      
-      
-      if (myVolunteers.length > 0) {
-        const uniqueVolunteers = removeDuplicateVolunteers(myVolunteers);
-        
-        const categorized = categorizeEventsByStatus(uniqueVolunteers);
-        
-        setAllMyEvents(uniqueVolunteers);
-        setCategorizedEvents(categorized);
-        
-        const attendedEventsNeedingRatings = categorized.attended.filter(event => !event.detailsLoaded);
-        if (attendedEventsNeedingRatings.length > 0) {
-          await loadRatingsForAttendedEvents(attendedEventsNeedingRatings);
-        }
-      } else {
-        await loadAllEventsAndVolunteersOriginal(empcode);
-      }
-      
-    } catch (error) {
-      console.error('❌ Error loading volunteer events:', error);
-      
-      try {
-        await loadAllEventsAndVolunteersOriginal(empcode);
-      } catch (fallbackError) {
-        console.error('❌ Fallback method also failed:', fallbackError);
-        setError('Failed to load volunteer events');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load events to build a map for eventId lookup
-  const loadEventsMap = async () => {
-    try {
-      
-      const currentYear = new Date().getFullYear();
-      const years = [
-        (currentYear - 2).toString(),
-        (currentYear - 1).toString(),
-        currentYear.toString(),
-        (currentYear + 1).toString()
-      ];
-      
-      const eventsMap = new Map<string, Event>();
-      
-      for (const year of years) {
-        try {
-          const eventsResponse = await getEventsByYear(year);
-          eventsResponse.data.forEach(event => {
-            // Create multiple keys for flexible lookup
-            eventsMap.set(event.name, event);
-            if (event.subName) {
-              eventsMap.set(`${event.name} - ${event.subName}`, event);
-              eventsMap.set(`${event.name}_${event.subName}`, event);
-            }
-          });
-        } catch (error) {
-          console.warn(`⚠️ Failed to load events for year ${year}:`, error);
-        }
-      }
-      
-      setEventsMap(eventsMap);
-      
-    } catch (error) {
-      console.error('❌ Error loading events map:', error);
-    }
-  };
-
-  // Get eventId for a volunteer event
-  const getEventIdForVolunteer = (volunteer: VolunteerWithEventDetails): number => {
-    const eventName = volunteer.eventName;
-    const eventSubName = volunteer.eventSubName;
-    
-    // Try different combinations to find the event
-    const lookupKeys = [
-      eventName,
-      eventSubName ? `${eventName} - ${eventSubName}` : null,
-      eventSubName ? `${eventName}_${eventSubName}` : null
-    ].filter(Boolean) as string[];
-    
-    for (const key of lookupKeys) {
-      const event = eventsMap.get(key);
-      if (event) {
-        return event.eventId;
-      }
-    }
-    
-    console.warn(`⚠️ Could not find eventId for volunteer ${volunteer.volunteerId} (${eventName})`);
-    return 0;
-  };
-
-  const loadAllEventsAndVolunteersOriginal = async (empcode: string) => {
-    try {
-      
-      const currentYear = new Date().getFullYear();
-      const years = [
-        (currentYear - 2).toString(),
-        (currentYear - 1).toString(),
-        currentYear.toString(),
-        (currentYear + 1).toString()
-      ];
-      
-      let allEventsData: Event[] = [];
-      const eventsMap = new Map<string, Event>();
-      
-      for (const year of years) {
-        try {
-          const eventsResponse = await getEventsByYear(year);
-          allEventsData = [...allEventsData, ...eventsResponse.data];
-          
-          // Build events map
-          eventsResponse.data.forEach(event => {
-            eventsMap.set(event.name, event);
-            if (event.subName) {
-              eventsMap.set(`${event.name} - ${event.subName}`, event);
-              eventsMap.set(`${event.name}_${event.subName}`, event);
-            }
-          });
-        } catch (error) {
-          console.warn(`⚠️ Failed to load events for year ${year}:`, error);
-        }
-      }
-      
-      setEventsMap(eventsMap);
-      
-      let myVolunteers: VolunteerWithEventDetails[] = [];
-      
-      for (const event of allEventsData) {
-        try {
-          
-          const possibleAdminIds = [empcode, '65960'];
-          const foundVolunteerIds = new Set<number>();
-          
-          for (const adminId of possibleAdminIds) {
-            try {
-              const volunteersResponse = await getVolunteersBySelfAndEvent(event.eventId, adminId);
-              
-              if (volunteersResponse.data && volunteersResponse.data.length > 0) {
-                
-                const myVolunteerRecords = volunteersResponse.data.filter(volunteer => {
-                  const volunteerEmpId = String(volunteer.employeeId);
-                  const currentEmpId = String(empcode);
-                  
-                  const isCurrentUser = volunteerEmpId === currentEmpId;
-                  const isNotDuplicate = !foundVolunteerIds.has(volunteer.volunteerId);
-                  
-                  if (isCurrentUser && isNotDuplicate) {
-                    foundVolunteerIds.add(volunteer.volunteerId);
-                    return true;
-                  }
-                  
-                  if (isCurrentUser && !isNotDuplicate) {
-                  }
-                  
-                  return false;
-                });
-                
-                if (myVolunteerRecords.length > 0) {
-                  
-                  const enhancedVolunteers = myVolunteerRecords.map(volunteer => ({
-                    ...volunteer,
-                    eventName: event.name,
-                    eventSubName: event.subName,
-                    tentativeMonth: event.tentativeMonth,
-                    tentativeYear: event.tentativeYear,
-                    enableConf: event.enableConf,
-                    rating: 0,
-                    detailsLoaded: false,
-                  }));
-                  
-                  myVolunteers = [...myVolunteers, ...enhancedVolunteers];
-                }
-              }
-            } catch (error) {
-              console.warn(`⚠️ Failed to load volunteers for event ${event.eventId} with adminId ${adminId}:`, error);
-            }
-          }
-        } catch (error) {
-          console.warn(`⚠️ Failed to process event ${event.eventId}:`, error);
-        }
-      }
-      
-      
-      const uniqueVolunteers = removeDuplicateVolunteers(myVolunteers);
-      
-      const categorized = categorizeEventsByStatus(uniqueVolunteers);      
-      setAllMyEvents(uniqueVolunteers);
+      const categorized = categorizeEventsByStatus(dummyVolunteerEvents);
       setCategorizedEvents(categorized);
-      
-      await loadRatingsForAttendedEvents(categorized.attended);
+      setAllMyEvents(dummyVolunteerEvents);
       
     } catch (error) {
-      console.error('❌ Error loading events and volunteers:', error);
-      setError('Failed to load events');
+      console.error('❌ Error loading events:', error);
+      setError('Failed to load volunteer events');
     } finally {
       setLoading(false);
     }
@@ -782,30 +504,26 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
 
   const handleRatingUpdate = async (volunteerId: number, newRating: number): Promise<void> => {
     try {
-      
       setUpdatingRatings(prev => new Set(prev).add(volunteerId));
       
-      const response = await updateVolunteerRating(volunteerId, newRating);
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      if (response.status === 200) {
-        
-        const updateVolunteerRatingFunc = (volunteer: VolunteerWithEventDetails) => 
-          volunteer.volunteerId === volunteerId 
-            ? { ...volunteer, rating: newRating }
-            : volunteer;
-        
-        setAllMyEvents(prev => prev.map(updateVolunteerRatingFunc));
-        
-        setCategorizedEvents(prev => ({
-          ...prev,
-          attended: prev.attended.map(updateVolunteerRatingFunc),
-          upcoming: prev.upcoming.map(updateVolunteerRatingFunc),
-          other: prev.other.map(updateVolunteerRatingFunc)
-        }));
-        
-      } else {
-        throw new Error('Failed to update rating');
-      }
+      // Update the rating in state
+      const updateVolunteerRatingFunc = (volunteer: VolunteerWithEventDetails) => 
+        volunteer.volunteerId === volunteerId 
+          ? { ...volunteer, rating: newRating }
+          : volunteer;
+      
+      setAllMyEvents(prev => prev.map(updateVolunteerRatingFunc));
+      
+      setCategorizedEvents(prev => ({
+        ...prev,
+        attended: prev.attended.map(updateVolunteerRatingFunc),
+        upcoming: prev.upcoming.map(updateVolunteerRatingFunc),
+        other: prev.other.map(updateVolunteerRatingFunc)
+      }));
+      
     } catch (error) {
       console.error('❌ Error updating rating:', error);
       throw error;
@@ -816,70 +534,6 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
         return newSet;
       });
     }
-  };
-
-  const loadRatingsForAttendedEvents = async (attendedEvents: VolunteerWithEventDetails[]) => {
-    if (attendedEvents.length === 0) {
-      return;
-    }
-
-    
-    for (const volunteer of attendedEvents) {
-      try {
-        setLoadingRatings(prev => new Set(prev).add(volunteer.volunteerId));
-        
-        
-        const detailsResponse = await getVolunteerDetailsByVId(volunteer.volunteerId);
-        const details: VolunteerDetails = detailsResponse.data;
-        
-
-        
-        const updatedVolunteer: VolunteerWithEventDetails = {
-          ...volunteer,
-          rating: details.rating || 0,
-          detailsLoaded: true
-        };
-        
-        setAllMyEvents(prev => 
-          prev.map(v => v.volunteerId === volunteer.volunteerId ? updatedVolunteer : v)
-        );
-        
-        setCategorizedEvents(prev => ({
-          ...prev,
-          attended: prev.attended.map(v => 
-            v.volunteerId === volunteer.volunteerId ? updatedVolunteer : v
-          )
-        }));
-        
-      } catch (error) {
-        console.error(`❌ Error loading details for volunteer ${volunteer.volunteerId}:`, error);
-        setAllMyEvents(prev => 
-          prev.map(v => v.volunteerId === volunteer.volunteerId ? { ...v, detailsLoaded: true } : v)
-        );
-      } finally {
-        setLoadingRatings(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(volunteer.volunteerId);
-          return newSet;
-        });
-      }
-    }
-    
-  };
-
-  const removeDuplicateVolunteers = (volunteers: VolunteerWithEventDetails[]): VolunteerWithEventDetails[] => {
-    const seen = new Set<number>();
-    const unique: VolunteerWithEventDetails[] = [];
-    
-    for (const volunteer of volunteers) {
-      if (!seen.has(volunteer.volunteerId)) {
-        seen.add(volunteer.volunteerId);
-        unique.push(volunteer);
-      } else {
-      }
-    }
-    
-    return unique;
   };
 
   const categorizeEventsByStatus = (volunteers: VolunteerWithEventDetails[]): CategorizedEvents => {
@@ -901,10 +555,8 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
       if (status === 'A') {
         categorized.attended.push(volunteer);
       } else if (status === 'X') {
-        // Not Attended goes to "View All Events"
         categorized.other.push(volunteer);
       } else if (status === 'N') {
-        // No Action: put in "Upcoming Events" if enableComp is false, else in "View All Events"
         if (enableComp) {
           categorized.other.push(volunteer);
         } else {
@@ -956,35 +608,23 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
     try {
       setUpdatingStatus(prev => new Set(prev).add(volunteer.volunteerId));
       
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const updateData = {
-        volunteerList: [{
-          volunteerId: volunteer.volunteerId,
-          status: 'C'
-        }]
-      };
+      const updatedVolunteer = { ...volunteer, status: 'C' };
       
-      const response = await updateVolunteerStatusList(updateData);
+      setAllMyEvents(prev => 
+        prev.map(v => v.volunteerId === volunteer.volunteerId ? updatedVolunteer : v)
+      );
       
-      if (response.status === 200) {
-        
-        const updatedVolunteer = { ...volunteer, status: 'C' };
-        
-        setAllMyEvents(prev => 
-          prev.map(v => v.volunteerId === volunteer.volunteerId ? updatedVolunteer : v)
-        );
-        
-        setCategorizedEvents(prev => ({
-          ...prev,
-          upcoming: prev.upcoming.map(v => 
-            v.volunteerId === volunteer.volunteerId ? updatedVolunteer : v
-          )
-        }));
-        
-        setNotification({ type: "success", message: "Your participation has been confirmed successfully!" });
-      } else {
-        throw new Error('Failed to update volunteer status');
-      }
+      setCategorizedEvents(prev => ({
+        ...prev,
+        upcoming: prev.upcoming.map(v => 
+          v.volunteerId === volunteer.volunteerId ? updatedVolunteer : v
+        )
+      }));
+      
+      setNotification({ type: "success", message: "Your participation has been confirmed successfully!" });
     } catch (error) {
       console.error('❌ Error confirming participation:', error);
       setNotification({ type: "error", message: "Failed to confirm participation. Please try again." });
@@ -1001,42 +641,33 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
     setShowRejectPopup({ open: true, volunteer });
   };
 
-  // Confirm reject
   const confirmRejectParticipation = async () => {
     if (!showRejectPopup.volunteer) return;
     const volunteer = showRejectPopup.volunteer;
     setShowRejectPopup({ open: false, volunteer: null });
     try {
       setUpdatingStatus(prev => new Set(prev).add(volunteer.volunteerId));
-      const updateData = {
-        volunteerList: [{
-          volunteerId: volunteer.volunteerId,
-          status: 'R'
-        }]
-      };
-      const response = await updateVolunteerStatusList(updateData);
-      if (response.status === 200) {
-        const updatedVolunteer = { ...volunteer, status: 'R' };
-        setAllMyEvents(prev =>
-          prev.map(v => v.volunteerId === volunteer.volunteerId ? updatedVolunteer : v)
-        );
-        setCategorizedEvents(prev => ({
-          ...prev,
-          upcoming: prev.upcoming.map(v =>
-            v.volunteerId === volunteer.volunteerId ? updatedVolunteer : v
-          )
-        }));
-        setNotification({ type: "success", message: "You have rejected your participation." });
-      } else {
-        throw new Error('Failed to update volunteer status');
-      }
+      
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const updatedVolunteer = { ...volunteer, status: 'R' };
+      setAllMyEvents(prev =>
+        prev.map(v => v.volunteerId === volunteer.volunteerId ? updatedVolunteer : v)
+      );
+      setCategorizedEvents(prev => ({
+        ...prev,
+        upcoming: prev.upcoming.map(v =>
+          v.volunteerId === volunteer.volunteerId ? updatedVolunteer : v
+        )
+      }));
+      setNotification({ type: "success", message: "You have rejected your participation." });
     } catch (error) {
       setNotification({ type: "error", message: "Failed to reject participation. Please try again." });
     } finally {
       setUpdatingStatus(prev => {
         const newSet = new Set(prev);
-        if (showRejectPopup.volunteer)
-          newSet.delete(showRejectPopup.volunteer.volunteerId);
+        newSet.delete(volunteer.volunteerId);
         return newSet;
       });
     }
@@ -1046,8 +677,6 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
     const enablesConfirmation = volunteer.enableConf === 'true' || volunteer.enableConf === '1';
     const isPendingStatus = volunteer.status?.toUpperCase() === 'N' || !volunteer.status || volunteer.status === '';
     const isNotUpdating = !updatingStatus.has(volunteer.volunteerId);
-    
-
     
     return enablesConfirmation && isPendingStatus && isNotUpdating;
   };
@@ -1088,7 +717,6 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
   };
 
   const formatEventTime = (volunteer: VolunteerWithEventDetails): string => {
-    // Prefer eventStime and eventEtime if present (for attended events)
     if (volunteer.eventStime && volunteer.eventEtime) {
       try {
         const formatTime = (timeString: string) => {
@@ -1104,7 +732,6 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
       }
     }
 
-    // Fallback to startTime and endTime if present
     if (volunteer.startTime && volunteer.endTime && 
         volunteer.startTime !== "00:00:00" && volunteer.endTime !== "00:00:00") {
       try {
@@ -1136,9 +763,9 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
       case 'REJECTED':
         return 'bg-red-100 text-red-800';
       case 'X':
-        return 'bg-orange-100 text-orange-800'; // Not Attended
+        return 'bg-orange-100 text-orange-800';
       case 'N':
-        return 'bg-gray-100 text-gray-800'; // No Action
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -1181,7 +808,7 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
       getStatusColor={getStatusColor}
       getStatusText={getStatusText}
       employeeId={employeeId}
-      eventId={getEventIdForVolunteer(volunteer)} // Pass the eventId
+      eventId={volunteer.volunteerId} // Use volunteerId as eventId for demo
     />
   );
 
@@ -1226,11 +853,9 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
           </div>
         )}
       </div>
-      {/* No volunteerId or confirmation info shown */}
     </motion.div>
   );
 
-  // ✅ RENDER - NOW USING STRUCTURAL COMPONENTS
   return (
     <>
       <NotificationToast notification={notification} onClose={() => setNotification(null)} />
