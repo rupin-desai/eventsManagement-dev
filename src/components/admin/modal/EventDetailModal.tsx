@@ -13,48 +13,98 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
-import {
-  getEventLocationsByEventId,
-  type EventLocation,
-  getEventLocationsDateByEventLocId,
-  //@ts-ignore
-  type EventLocationDate,
-} from "../../../api/locationApi";
-import { getLocations, type Location } from "../../../api/locationApi";
-import {
-  //@ts-ignore
-  deleteEventLocation,
-  formatEventDate,
-  //@ts-ignore
-  formatTimeForDisplay,
-  createEventLocation,
-  updateEventLocation,
-  updateEventStatus,
-  //@ts-ignore
-  type DeleteEventLocationRequest,
-  type CreateEventLocationRequest,
-  type UpdateEventLocationRequest,
-} from "../../../api/admin/eventAdminApi";
-import { getActivityImage } from "../../../api/activityApi"; // Make sure this is imported
-import { createEventLocationDate, deleteEventLocationDate } from "../../../api/locationApi";
-// Helper to format time as HH:mm (24-hour) for API
-function formatEventTime(time: string): string {
-  // Accepts "HH:mm" or "HH:mm:ss", returns "HH:mm:ss"
-  if (!time) return "";
-  if (/^\d{2}:\d{2}$/.test(time)) {
-    return time + ":00";
-  }
-  if (/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-    return time;
-  }
-  // fallback: try to parse and format
-  const d = new Date(`1970-01-01T${time}`);
-  if (!isNaN(d.getTime())) {
-    return d.toTimeString().slice(0, 8);
-  }
-  return time;
+
+// Dummy types (replacing API types)
+interface EventLocation {
+  eventLocationId: number;
+  locationId: number;
+  locationName: string;
+  venue: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  dateType?: "M" | "R" | "";
 }
-import type { Event } from "../../../api/eventApi";
+
+interface Location {
+  locationId: number;
+  locationName: string;
+}
+
+interface Event {
+  eventId: number;
+  name: string;
+  subName: string;
+  description: string;
+  tentativeMonth: string;
+  tentativeYear: string;
+  type: string;
+  enableCert: string;
+  enableComp: string;
+  enableConf: string;
+  addedBy: number;
+  activityId?: number;
+}
+
+// Dummy data
+const dummyLocations: Location[] = [
+  { locationId: 1, locationName: "Mumbai" },
+  { locationId: 2, locationName: "Delhi" },
+  { locationId: 3, locationName: "Bangalore" },
+  { locationId: 4, locationName: "Chennai" },
+  { locationId: 5, locationName: "Pune" },
+];
+
+const dummyEventLocations: EventLocation[] = [
+  {
+    eventLocationId: 1,
+    locationId: 1,
+    locationName: "Mumbai",
+    venue: "Central Park, Mumbai",
+    eventDate: "2025-08-15",
+    startTime: "09:00",
+    endTime: "17:00",
+    dateType: "M",
+  },
+  {
+    eventLocationId: 2,
+    locationId: 2,
+    locationName: "Delhi",
+    venue: "Community Center, Delhi",
+    eventDate: "2025-08-16",
+    startTime: "10:00",
+    endTime: "16:00",
+    dateType: "R",
+  },
+];
+
+// Helper to format time as HH:mm (24-hour) for API
+// function formatEventTime(time: string): string {
+//   // Accepts "HH:mm" or "HH:mm:ss", returns "HH:mm:ss"
+//   if (!time) return "";
+//   if (/^\d{2}:\d{2}$/.test(time)) {
+//     return time + ":00";
+//   }
+//   if (/^\d{2}:\d{2}:\d{2}$/.test(time)) {
+//     return time;
+//   }
+//   // fallback: try to parse and format
+//   const d = new Date(`1970-01-01T${time}`);
+//   if (!isNaN(d.getTime())) {
+//     return d.toTimeString().slice(0, 8);
+//   }
+//   return time;
+// }
+
+// function formatEventDate(dateString: string): string {
+//   if (!dateString) return "";
+//   try {
+//     const date = new Date(dateString);
+//     return date.toISOString().split('T')[0];
+//   } catch {
+//     return dateString;
+//   }
+// }
 
 export interface EventLocationFormData {
   eventLocationId?: number;
@@ -249,7 +299,7 @@ const EventDetailModalDetailsTab: React.FC<{
         confStatus: convertStatusToBooleanString(event.enableConf || "I"),
       };
       setOriginalFormData(initialData);
-      setEventStatusForm(initialData); // <-- Ensure form is initialized
+      setEventStatusForm(initialData);
     }
     // eslint-disable-next-line
   }, [event]);
@@ -271,30 +321,15 @@ const EventDetailModalDetailsTab: React.FC<{
   const handleUpdateEventStatus = async () => {
     try {
       setIsUpdating(true);
-      await updateEventStatus({
-        eventId: event.eventId,
-        tentativeYear: eventStatusForm.tentativeYear,
-        tentativeMonth: eventStatusForm.tentativeMonth,
-        certStatus: eventStatusForm.certStatus,
-        compStatus: eventStatusForm.compStatus,
-        confStatus: eventStatusForm.confStatus,
-      });
+      
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       showNotification("success", "Event status updated successfully");
       setOriginalFormData({ ...eventStatusForm });
       onEventUpdated();
     } catch (error: any) {
-      let errorMessage = "Failed to update event status";
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data) {
-        errorMessage =
-          typeof error.response.data === "string"
-            ? error.response.data
-            : JSON.stringify(error.response.data);
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      showNotification("error", errorMessage);
+      showNotification("error", "Failed to update event status");
     } finally {
       setIsUpdating(false);
     }
@@ -453,7 +488,6 @@ const EventDetailModalLocationForm: React.FC<{
   rangeEnd: string;
   setRangeEnd: React.Dispatch<React.SetStateAction<string>>;
 }> = ({
-  event,
   locationForm,
   setLocationForm,
   availableLocations,
@@ -474,31 +508,40 @@ const EventDetailModalLocationForm: React.FC<{
   const [dateIdMap, setDateIdMap] = useState<Record<string, number[]>>({});
   const [deletingDate, setDeletingDate] = useState<string | null>(null);
 
-  // Fetch dateIdMap when editingLocation or dateType changes
+  // Simulate fetching dateIdMap when editingLocation or dateType changes
   useEffect(() => {
     if (
       editingLocation &&
       (editingLocation.eventLocationId || editingLocation.eventLocationId === 0) &&
       (dateType === "M" || dateType === "R")
     ) {
-      getEventLocationsDateByEventLocId(editingLocation.eventLocationId).then((res) => {
-        // res.data is array of { eventLocationDatesId, date }
-        if (Array.isArray(res.data)) {
-          const map: Record<string, number[]> = {};
-          res.data.forEach((d: any) => {
-            if (d.date && d.eventLocationDatesId) {
-              const dateKey = d.date.slice(0, 10);
-              if (!map[dateKey]) map[dateKey] = [];
-              map[dateKey].push(d.eventLocationDatesId);
-            }
+      // Simulate API call with timeout
+      const simulateFetchDates = async () => {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Generate dummy date IDs
+        const map: Record<string, number[]> = {};
+        if (dateType === "M") {
+          multiDates.forEach((date, index) => {
+            map[date] = [index + 1];
           });
-          setDateIdMap(map);
+        } else if (dateType === "R" && rangeStart && rangeEnd) {
+          const start = new Date(rangeStart);
+          const end = new Date(rangeEnd);
+          let id = 1;
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateKey = d.toISOString().slice(0, 10);
+            map[dateKey] = [id++];
+          }
         }
-      });
+        setDateIdMap(map);
+      };
+      
+      simulateFetchDates();
     } else {
       setDateIdMap({});
     }
-  }, [editingLocation, dateType]);
+  }, [editingLocation, dateType, multiDates, rangeStart, rangeEnd]);
 
   const handleCreateEventLocation = async () => {
     if (
@@ -513,54 +556,15 @@ const EventDetailModalLocationForm: React.FC<{
     }
     try {
       setIsSubmitting(true);
-      let eventLocationDates: { date: string }[] | undefined = undefined;
-      let eventDate = locationForm.eventDate;
-
-      if (dateType === "M") {
-        eventLocationDates = multiDates.map((date) => ({ date }));
-        eventDate = multiDates[0] || "";
-      } else if (dateType === "R") {
-        if (rangeStart && rangeEnd) {
-          // Generate all dates in range
-          const start = new Date(rangeStart);
-          const end = new Date(rangeEnd);
-          const dates: { date: string }[] = [];
-          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            dates.push({ date: d.toISOString().slice(0, 10) });
-          }
-          eventLocationDates = dates;
-          eventDate = rangeStart;
-        }
-      }
-
-      const createData: CreateEventLocationRequest = {
-        eventId: event.eventId,
-        locationId: locationForm.locationId,
-        locationName: locationForm.locationName || "",
-        venue: locationForm.venue.trim(),
-        eventDate,
-        startTime: formatEventTime(locationForm.startTime),
-        endTime: formatEventTime(locationForm.endTime),
-        datetype: dateType,
-        eventLocationDates,
-      };
-      await createEventLocation(createData);
+      
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       showNotification("success", "Event location created successfully");
       resetLocationForm();
       await loadEventData();
     } catch (error: any) {
-      let errorMessage = "Failed to create event location";
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data) {
-        errorMessage =
-          typeof error.response.data === "string"
-            ? error.response.data
-            : JSON.stringify(error.response.data);
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      showNotification("error", errorMessage);
+      showNotification("error", "Failed to create event location");
     } finally {
       setIsSubmitting(false);
     }
@@ -580,93 +584,14 @@ const EventDetailModalLocationForm: React.FC<{
     try {
       setIsSubmitting(true);
 
-      // 1. Update the main event location details (all fields except dates)
-      const updateData: UpdateEventLocationRequest = {
-        eventLocationId: editingLocation.eventLocationId,
-        venue: locationForm.venue.trim(),
-        eventDate: formatEventDate(locationForm.eventDate),
-        startTime: formatEventTime(locationForm.startTime),
-        endTime: formatEventTime(locationForm.endTime),
-        dateType: dateType || "S", // <-- Pass datetype here (default to "S" for single)
-      };
-      await updateEventLocation(updateData);
-
-      // 2. Handle date deletions for "M" (multiple dates) or "R" (range)
-      if ((dateType === "M" || dateType === "R") && editingLocation.eventLocationId) {
-        // Fetch all existing dates for this location
-        const res = await getEventLocationsDateByEventLocId(editingLocation.eventLocationId);
-        const existingDates: { eventLocationDateId: number; date: string }[] =
-          Array.isArray(res.data)
-            ? res.data.map((d: any) =>
-                typeof d === "string"
-                  ? { eventLocationDateId: undefined, date: d }
-                  : d
-              )
-            : [];
-
-        // Find which dates to delete (those not in multiDates/range)
-        let keepDates: string[] = [];
-        if (dateType === "M") {
-          keepDates = multiDates;
-        } else if (dateType === "R" && rangeStart && rangeEnd) {
-          // Generate all dates in range
-          const start = new Date(rangeStart);
-          const end = new Date(rangeEnd);
-          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            keepDates.push(d.toISOString().slice(0, 10));
-          }
-        }
-
-        // Delete dates not in keepDates
-        for (const dateObj of existingDates) {
-          if (
-            dateObj.eventLocationDateId &&
-            !keepDates.includes(dateObj.date.slice(0, 10))
-          ) {
-            await deleteEventLocationDate(dateObj.eventLocationDateId);
-          }
-        }
-      }
-
-      // 3. Add new dates if needed (already handled by createEventLocationDate below)
-      let datesToSend: string[] = [];
-      if (dateType === "M") {
-        datesToSend = multiDates;
-      } else if (dateType === "R" && rangeStart && rangeEnd) {
-        // Generate all dates in range
-        const start = new Date(rangeStart);
-        const end = new Date(rangeEnd);
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          datesToSend.push(d.toISOString().slice(0, 10));
-        }
-      }
-      function toCreateEventLocationDates(dates: string[]): { date: string }[] {
-        return dates.map(dateStr => ({ date: dateStr }));
-      }
-
-      if (dateType && datesToSend.length > 0) {
-        await createEventLocationDate({
-          eventLocationId: editingLocation.eventLocationId,
-          createEventLocationDates: toCreateEventLocationDates(datesToSend),
-        });
-      }
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       showNotification("success", "Event location updated successfully");
       resetLocationForm();
       await loadEventData();
     } catch (error: any) {
-      let errorMessage = "Failed to update event location";
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data) {
-        errorMessage =
-          typeof error.response.data === "string"
-            ? error.response.data
-            : JSON.stringify(error.response.data);
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      showNotification("error", errorMessage);
+      showNotification("error", "Failed to update event location");
     } finally {
       setIsSubmitting(false);
     }
@@ -838,15 +763,8 @@ const EventDetailModalLocationForm: React.FC<{
                   "Changing date type will delete all current dates for this location. Continue?"
                 )
               ) {
-                // Fetch all date IDs for this location and delete them
-                const res = await getEventLocationsDateByEventLocId(editingLocation.eventLocationId);
-                if (Array.isArray(res.data)) {
-                  for (const d of res.data) {
-                    if (d.eventLocationDatesId) {
-                      await deleteEventLocationDate(d.eventLocationDatesId);
-                    }
-                  }
-                }
+                // Simulate deletion
+                await new Promise(resolve => setTimeout(resolve, 500));
                 setMultiDates([]);
                 setRangeStart("");
                 setRangeEnd("");
@@ -884,21 +802,11 @@ const EventDetailModalLocationForm: React.FC<{
                   className="ml-1 text-red-500 hover:text-red-700 cursor-pointer active:scale-95"
                   disabled={deletingDate === date}
                   onClick={async () => {
-                    // If editing, call delete API for all eventLocationDatesId(s) for this date
-                    if (
-                      editingLocation &&
-                      dateIdMap[date] &&
-                      (Array.isArray(dateIdMap[date]) ? dateIdMap[date].length > 0 : true)
-                    ) {
+                    // Simulate deletion
+                    if (editingLocation && dateIdMap[date]) {
                       setDeletingDate(date);
                       try {
-                        const ids = Array.isArray(dateIdMap[date])
-                          ? dateIdMap[date]
-                          : [dateIdMap[date]];
-                        for (const id of ids) {
-                          console.log("Deleting eventLocationDatesId:", id);
-                          await deleteEventLocationDate(id);
-                        }
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                         setMultiDates(multiDates.filter((d) => d !== date));
                         setDateIdMap((prev) => {
                           const newMap = { ...prev };
@@ -1013,9 +921,7 @@ const EventDetailModalLocationsList: React.FC<{
   setEditingLocation,
   setLocationForm,
   setShowLocationForm,
-  //@ts-ignore
   showNotification,
-  //@ts-ignore
   loadEventData,
   editingLocation,
   setDateType,
@@ -1023,11 +929,8 @@ const EventDetailModalLocationsList: React.FC<{
   setRangeStart,
   setRangeEnd,
 }) => {
-  //@ts-ignore
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [locationDates, setLocationDates] = useState<Record<number, string[]>>(
-    {}
-  );
+  const [locationDates, setLocationDates] = useState<Record<number, string[]>>({});
   const [loadingDates, setLoadingDates] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
@@ -1041,18 +944,26 @@ const EventDetailModalLocationsList: React.FC<{
 
   const fetchDates = async (
     eventLocationId: number,
-    //@ts-ignore
     eventLocation: EventLocation
   ) => {
     setLoadingDates((prev) => ({ ...prev, [eventLocationId]: true }));
     try {
-      const res = await getEventLocationsDateByEventLocId(eventLocationId);
-      // res.data is array of { eventLocationDatesId, date }
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Generate dummy dates based on dateType
+      let dates: string[] = [];
+      if (eventLocation.dateType === "M") {
+        dates = ["2025-08-15", "2025-08-16", "2025-08-17"];
+      } else if (eventLocation.dateType === "R") {
+        dates = ["2025-08-15", "2025-08-16", "2025-08-17", "2025-08-18"];
+      } else {
+        dates = [eventLocation.eventDate];
+      }
+      
       setLocationDates((prev) => ({
         ...prev,
-        [eventLocationId]: Array.isArray(res.data)
-          ? res.data.map((d: any) => d.date?.slice(0, 10) || "")
-          : [],
+        [eventLocationId]: dates,
       }));
     } catch {
       setLocationDates((prev) => ({
@@ -1067,7 +978,6 @@ const EventDetailModalLocationsList: React.FC<{
   // Use dateType (or datetype fallback) and string[] dates
   const formatDateRange = (eventLocation: EventLocation) => {
     const dates = locationDates[eventLocation.eventLocationId];
-    // Use dateType (not datetype)
     const dateType = eventLocation.dateType || "";
     if (loadingDates[eventLocation.eventLocationId]) {
       return <span className="text-xs text-gray-400">Loading dates...</span>;
@@ -1079,7 +989,9 @@ const EventDetailModalLocationsList: React.FC<{
     if (!window.confirm("Are you sure you want to delete this location?")) return;
     setDeletingId(eventLocation.eventLocationId);
     try {
-      await deleteEventLocation({ eventLocationId: eventLocation.eventLocationId }); // <-- use new API
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       showNotification("success", "Location deleted successfully");
       await loadEventData();
     } catch (error: any) {
@@ -1132,12 +1044,11 @@ const EventDetailModalLocationsList: React.FC<{
             });
             setShowLocationForm(true);
 
-            // Fetch dates and set dateType/multiDates/range in the form
-            getEventLocationsDateByEventLocId(eventLocation.eventLocationId).then((res) => {
-              // Extract date strings
-              const dates: string[] = Array.isArray(res.data)
-                ? res.data.map((d: any) => d.date?.slice(0, 10) || "")
-                : [];
+            // Simulate fetching dates
+            const simulateFetchDates = async () => {
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              const dates: string[] = locationDates[eventLocation.eventLocationId] || [];
               const dateType = eventLocation.dateType || "";
               setDateType(dateType);
               if (dateType === "M") {
@@ -1153,7 +1064,9 @@ const EventDetailModalLocationsList: React.FC<{
                 setRangeStart("");
                 setRangeEnd("");
               }
-            });
+            };
+            
+            simulateFetchDates();
           }}
         >
           <div className="flex items-start justify-between">
@@ -1170,7 +1083,6 @@ const EventDetailModalLocationsList: React.FC<{
               <div className="flex items-center gap-4 text-sm text-gray-500">
                 <div className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  {/* Show date range or dates here */}
                   <span>{formatDateRange(eventLocation)}</span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -1196,12 +1108,11 @@ const EventDetailModalLocationsList: React.FC<{
                   });
                   setShowLocationForm(true);
 
-                  // Fetch dates and set dateType/multiDates/range in the form
-                  getEventLocationsDateByEventLocId(eventLocation.eventLocationId).then((res) => {
-                    // Extract date strings
-                    const dates: string[] = Array.isArray(res.data)
-                      ? res.data.map((d: any) => d.date?.slice(0, 10) || "")
-                      : [];
+                  // Simulate fetching dates
+                  const simulateFetchDates = async () => {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    const dates: string[] = locationDates[eventLocation.eventLocationId] || [];
                     const dateType = eventLocation.dateType || "";
                     setDateType(dateType);
                     if (dateType === "M") {
@@ -1217,7 +1128,9 @@ const EventDetailModalLocationsList: React.FC<{
                       setRangeStart("");
                       setRangeEnd("");
                     }
-                  });
+                  };
+                  
+                  simulateFetchDates();
                 }}
                 className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
                 title="Edit Location"
@@ -1387,7 +1300,6 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
   event,
   isOpen,
   onClose,
-  //@ts-ignore
   onEventUpdated,
 }) => {
   const [loading, setLoading] = useState(false);
@@ -1408,7 +1320,6 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const [multiDates, setMultiDates] = useState<string[]>([]);
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
-  //@ts-ignore
   const [eventStatusForm, setEventStatusForm] = useState({
     tentativeMonth: "",
     tentativeYear: "",
@@ -1453,17 +1364,23 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
   }, [notification]);
 
   useEffect(() => {
-    // Fetch the image when the modal opens or event changes
+    // Simulate fetching event image
     if (isOpen && event?.activityId) {
-      getActivityImage(event.activityId)
-        .then((res) => {
-          if (res.data?.fileName) {
-            setEventImageUrl(res.data.fileName);
-          } else {
-            setEventImageUrl(null);
-          }
-        })
-        .catch(() => setEventImageUrl(null));
+      const simulateImageFetch = async () => {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Set dummy image based on activity ID
+        const dummyImages = [
+          "https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1464207687429-7505649dae38?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=800&q=80"
+        ];
+        
+        const imageIndex = (event.activityId ?? 0) % dummyImages.length;
+        setEventImageUrl(dummyImages[imageIndex]);
+      };
+      
+      simulateImageFetch();
     } else {
       setEventImageUrl(null);
     }
@@ -1472,12 +1389,13 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const loadEventData = async () => {
     try {
       setLoading(true);
-      const [eventLocationsResponse, locationsResponse] = await Promise.all([
-        getEventLocationsByEventId(event.eventId),
-        getLocations(),
-      ]);
-      setEventLocations(eventLocationsResponse.data);
-      setAvailableLocations(locationsResponse.data);
+      
+      // Simulate API calls with timeout
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Use dummy data
+      setEventLocations(dummyEventLocations);
+      setAvailableLocations(dummyLocations);
 
       const getMonthNumber = (monthValue: string): string => {
         if (!monthValue) return "1";

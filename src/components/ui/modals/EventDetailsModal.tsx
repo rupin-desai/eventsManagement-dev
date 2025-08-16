@@ -70,6 +70,26 @@ interface EventDetailModalProps {
   isYearRound?: boolean;
 }
 
+// Dummy event locations data
+const dummyEventLocations: EventLocation[] = [
+  {
+    eventLocationId: 1,
+    locationName: "Mumbai",
+    eventDate: "2025-08-15",
+    startTime: "09:00:00",
+    endTime: "13:00:00",
+    venue: "Central Park, Mumbai\nNear Gateway of India"
+  },
+  {
+    eventLocationId: 2,
+    locationName: "Delhi",
+    eventDate: "2025-08-16",
+    startTime: "10:00:00",
+    endTime: "14:00:00",
+    venue: "India Gate Grounds\nNew Delhi"
+  }
+];
+
 const EventDetailsModal: React.FC<EventDetailModalProps> = ({
   isOpen,
   onClose,
@@ -83,8 +103,8 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
   const navigate = useNavigate();
   const [eventImageUrl, setEventImageUrl] = useState<string | null>(null);
 
-  // Use eventLocations from event prop (dummy/static)
-  const eventLocations: EventLocation[] = event.eventLocations || [];
+  // Use dummy event locations
+  const eventLocations: EventLocation[] = event.eventLocations || dummyEventLocations;
 
   // Disable body scroll when modal is open
   useEffect(() => {
@@ -251,25 +271,6 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
         )
       : "To be shared";
 
-  // Compose all unique event dates from eventLocations
-  // const allEventDates = eventLocations
-  //   .map((loc) => loc.eventDate)
-  //   .filter((date) => !!date && date !== "0001-01")
-  //   .map((date) => {
-  //     try {
-  //       const d = new Date(date);
-  //       return d.toLocaleDateString("en-US", {
-  //         weekday: "long",
-  //         year: "numeric",
-  //         month: "long",
-  //         day: "numeric",
-  //       });
-  //     } catch {
-  //       return null;
-  //     }
-  //   })
-  //   .filter(Boolean);
-
   const handleAugustActivitiesClick = (e: React.MouseEvent) => {
     e.preventDefault();
     onClose();
@@ -277,57 +278,6 @@ const EventDetailsModal: React.FC<EventDetailModalProps> = ({
       navigate("/we-care-month");
     }, 200);
   };
-
-  // Helper to format multiple dates and date ranges
-  // const formatEventLocationDates = (
-  //   dateType: string | undefined,
-  //   dates: string[] | undefined,
-  //   fallbackDate: string
-  // ) => {
-  //   if (!dates || dates.length === 0) return fallbackDate;
-  //   const validDates = dates
-  //     .map((d) => {
-  //       if (!d) return null;
-  //       const dateObj = new Date(d);
-  //       return isNaN(dateObj.getTime()) ? null : dateObj;
-  //     })
-  //     .filter(Boolean) as Date[];
-
-  //   if (validDates.length === 0) return fallbackDate;
-
-  //   validDates.sort((a, b) => a.getTime() - b.getTime());
-
-  //   if (dateType === "M") {
-  //     return validDates
-  //       .map((date) =>
-  //         date.toLocaleDateString("en-US", {
-  //           year: "numeric",
-  //           month: "short",
-  //           day: "numeric",
-  //         })
-  //       )
-  //       .join(", ");
-  //   }
-  //   if (dateType === "R" && validDates.length > 1) {
-  //     const start = validDates[0];
-  //     const end = validDates[validDates.length - 1];
-  //     return `${start.toLocaleDateString("en-US", {
-  //       year: "numeric",
-  //       month: "short",
-  //       day: "numeric",
-  //     })} - ${end.toLocaleDateString("en-US", {
-  //       year: "numeric",
-  //       month: "short",
-  //       day: "numeric",
-  //     })}`;
-  //   }
-  //   const date = validDates[0];
-  //   return date.toLocaleDateString("en-US", {
-  //     year: "numeric",
-  //     month: "short",
-  //     day: "numeric",
-  //   });
-  // };
 
   return (
     <AnimatePresence>

@@ -1,6 +1,21 @@
 import React from 'react';
 import { Loader2, Clock, Eye, Trash2 } from 'lucide-react';
-import type { Event } from '../../../../api/eventApi';
+
+// Dummy Event type (replaces API type)
+interface Event {
+  eventId: number;
+  name: string;
+  subName: string;
+  description: string;
+  tentativeMonth: string;
+  tentativeYear: string;
+  type: string;
+  enableCert: string;
+  enableComp: string;
+  enableConf: string;
+  addedBy: number;
+  addedOn: string;
+}
 
 interface AdminEventsTableProps {
   events: Event[];

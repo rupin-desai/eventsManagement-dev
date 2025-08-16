@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Loader2 } from 'lucide-react';
-import { getDistinctEventYears } from '../../../../api/eventApi';
 
 interface AdminEventsFiltersProps {
   searchTerm: string;
@@ -11,6 +10,9 @@ interface AdminEventsFiltersProps {
   setEventType: (value: string) => void;
 }
 
+// Dummy years data
+const dummyAvailableYears = ["2025", "2024", "2023", "2022"];
+
 const AdminEventsFilters: React.FC<AdminEventsFiltersProps> = ({
   searchTerm,
   setSearchTerm,
@@ -20,7 +22,7 @@ const AdminEventsFilters: React.FC<AdminEventsFiltersProps> = ({
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [yearsLoading, setYearsLoading] = useState(true);
 
-  // ✅ Load distinct years from API on component mount
+  // ✅ Load distinct years (simulated) on component mount
   useEffect(() => {
     loadDistinctYears();
     // eslint-disable-next-line
@@ -29,11 +31,16 @@ const AdminEventsFilters: React.FC<AdminEventsFiltersProps> = ({
   const loadDistinctYears = async () => {
     try {
       setYearsLoading(true);
-      const response = await getDistinctEventYears();
-      const sortedYears = response.data.sort(
+      
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Use dummy data
+      const sortedYears = dummyAvailableYears.sort(
         (a, b) => parseInt(b) - parseInt(a)
       );
       setAvailableYears(sortedYears);
+      
       if (sortedYears.length > 0 && !selectedYear) {
         const currentYear = new Date().getFullYear().toString();
         const defaultYear = sortedYears.includes(currentYear)
@@ -95,8 +102,6 @@ const AdminEventsFilters: React.FC<AdminEventsFiltersProps> = ({
           </div>
         )}
       </div>
-
-      
     </div>
   );
 };

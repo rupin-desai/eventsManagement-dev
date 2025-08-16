@@ -1,23 +1,54 @@
 import React, { useState, useEffect } from "react";
-import {
-  createEvent,
-  deleteEvent,
-  type CreateEventRequest,
-  type DeleteEventRequest,
-  type EventLocationRequest,
-} from "../../api/admin/eventAdminApi";
-import { getCurrentUserDetails } from "../../utils/volunteerFormHelpers";
-import { getEventsByYear, type Event } from "../../api/eventApi";
-import { getActiveActivities, type Activity } from "../../api/activityApi";
-import { getLocations, type Location } from "../../api/locationApi";
-import { AxiosError } from "axios";
+// Removed API imports
+// import {
+//   createEvent,
+//   deleteEvent,
+//   type CreateEventRequest,
+//   type DeleteEventRequest,
+//   type EventLocationRequest,
+// } from "../../api/admin/eventAdminApi";
+// import { getCurrentUserDetails } from "../../utils/volunteerFormHelpers";
+// import { getEventsByYear, type Event } from "../../api/eventApi";
+// import { getActiveActivities, type Activity } from "../../api/activityApi";
+// import { getLocations, type Location } from "../../api/locationApi";
+// import { AxiosError } from "axios";
 import EventDetailModal from "../../components/admin/modal/EventDetailModal";
-import AdminNotification from "../../components/ui/admin/AdminNotification";
 import AdminEventsFilters from "../../components/admin/pages/adminEvents/AdminEventsFilters";
 import AdminEventsCreateForm from "../../components/admin/pages/adminEvents/AdminEventsCreateForm";
 import AdminEventsTable from "../../components/admin/pages/adminEvents/AdminEventsTable";
 import AdminPageHeader from "../../components/ui/admin/AdminPageHeader";
 import { Plus, Calendar } from "lucide-react";
+
+// Dummy types to replace API types
+interface Event {
+  eventId: number;
+  name: string;
+  subName: string;
+  description: string;
+  tentativeMonth: string;
+  tentativeYear: string;
+  type: string;
+  enableCert: string;
+  enableComp: string;
+  enableConf: string;
+  addedBy: number;
+  addedOn: string;
+}
+
+interface Activity {
+  activityId: number;
+  name: string;
+  subName: string;
+  type: string;
+  description: string;
+  status: string;
+}
+
+interface Location {
+  locationId: number;
+  locationName: string;
+  status: string;
+}
 
 interface EventFormData {
   activityId: number;
@@ -25,6 +56,71 @@ interface EventFormData {
   tentativeYear: string;
   selectedLocations: string[];
 }
+
+// Dummy data
+const dummyEvents: Event[] = [
+  {
+    eventId: 1,
+    name: "Tree Plantation Drive",
+    subName: "Environmental Initiative",
+    description: "Join us in making our environment greener by planting trees.",
+    tentativeMonth: "8",
+    tentativeYear: "2025",
+    type: "Annual",
+    enableCert: "true",
+    enableComp: "false",
+    enableConf: "true",
+    addedBy: 1001,
+    addedOn: "2025-01-15"
+  },
+  {
+    eventId: 2,
+    name: "Blood Donation Camp",
+    subName: "Health Initiative",
+    description: "Save lives by donating blood at our annual camp.",
+    tentativeMonth: "9",
+    tentativeYear: "2025",
+    type: "Annual",
+    enableCert: "true",
+    enableComp: "false",
+    enableConf: "true",
+    addedBy: 1001,
+    addedOn: "2025-02-10"
+  }
+];
+
+const dummyActivities: Activity[] = [
+  {
+    activityId: 1,
+    name: "Tree Plantation",
+    subName: "Environmental Activity",
+    type: "Annual",
+    description: "Plant trees to help the environment",
+    status: "Active"
+  },
+  {
+    activityId: 2,
+    name: "Blood Donation",
+    subName: "Health Activity",
+    type: "Annual",
+    description: "Donate blood to save lives",
+    status: "Active"
+  }
+];
+
+const dummyLocations: Location[] = [
+  { locationId: 1, locationName: "Mumbai", status: "Active" },
+  { locationId: 2, locationName: "Delhi", status: "Active" },
+  { locationId: 3, locationName: "Bangalore", status: "Active" },
+  { locationId: 4, locationName: "Chennai", status: "Active" },
+  { locationId: 5, locationName: "Pune", status: "Active" }
+];
+
+const dummyUserDetails = {
+  employeeId: 1001,
+  empcode: "EMP001",
+  name: "John Doe"
+};
 
 const AdminEventsPage: React.FC = () => {
   // State management
@@ -40,6 +136,9 @@ const AdminEventsPage: React.FC = () => {
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  // Add eventType state for filters
+  const [eventType, setEventType] = useState<string>("");
 
   // Form state
   const [formData, setFormData] = useState<EventFormData>({
@@ -79,9 +178,10 @@ const AdminEventsPage: React.FC = () => {
   }, [notification]);
 
   useEffect(() => {
-    getCurrentUserDetails()
-      .then(user => setCurrentEmpId(user.employeeId))
-      .catch(() => setCurrentEmpId(null));
+    // Simulate getting current user details
+    setTimeout(() => {
+      setCurrentEmpId(dummyUserDetails.employeeId);
+    }, 500);
   }, []);
 
   const loadInitialData = async () => {
@@ -96,8 +196,14 @@ const AdminEventsPage: React.FC = () => {
     if (!selectedYear) return;
     try {
       setLoading(true);
-      const response = await getEventsByYear(selectedYear);
-      setEvents(response.data);
+      
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Filter events by selected year
+      const filteredEvents = dummyEvents.filter(event => event.tentativeYear === selectedYear);
+      setEvents(filteredEvents);
+      
     } catch (error) {
       showNotification("error", "Failed to load events");
       setEvents([]);
@@ -108,8 +214,9 @@ const AdminEventsPage: React.FC = () => {
 
   const loadActivities = async () => {
     try {
-      const response = await getActiveActivities();
-      setActivities(response.data);
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setActivities(dummyActivities);
     } catch (error) {
       showNotification("error", "Failed to load activities");
     }
@@ -117,8 +224,9 @@ const AdminEventsPage: React.FC = () => {
 
   const loadLocations = async () => {
     try {
-      const response = await getLocations();
-      setLocations(response.data);
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 600));
+      setLocations(dummyLocations);
     } catch (error) {
       showNotification("error", "Failed to load locations");
     }
@@ -155,51 +263,38 @@ const AdminEventsPage: React.FC = () => {
     try {
       setFormLoading(true);
 
-      const eventLocations: EventLocationRequest[] =
-        formData.selectedLocations.map((locationId) => ({
-          locationId,
-        }));
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const createData: CreateEventRequest = {
-        activityId: formData.activityId,
+      // Find selected activity for creating new event
+      const selectedActivity = activities.find(a => a.activityId === formData.activityId);
+      
+      // Create new event object
+      const newEvent: Event = {
+        eventId: Date.now(), // Use timestamp as dummy ID
+        name: selectedActivity?.name || "New Event",
+        subName: selectedActivity?.subName || "Event Subtitle",
+        description: selectedActivity?.description || "Event description",
         tentativeMonth: formData.tentativeMonth,
         tentativeYear: formData.tentativeYear,
-        addedBy: currentEmpId ?? 48710, // Use logged-in user's empId, fallback to 48710
-        eventLocations,
+        type: selectedActivity?.type || "Annual",
+        enableCert: "true",
+        enableComp: "false",
+        enableConf: "true",
+        addedBy: currentEmpId ?? 1001,
+        addedOn: new Date().toISOString()
       };
 
-      const response = await createEvent(createData);
-
-      if (response.status === 200 || response.status === 201) {
-        showNotification("success", "Event created successfully");
-        resetForm();
-
-        if (formData.tentativeYear === selectedYear) {
-          loadEvents();
-        }
+      // Add to events if it matches selected year
+      if (formData.tentativeYear === selectedYear) {
+        setEvents(prev => [...prev, newEvent]);
       }
+
+      showNotification("success", "Event created successfully");
+      resetForm();
+
     } catch (error) {
-      let errorMessage = "Failed to create event";
-
-      if (error instanceof AxiosError) {
-        if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        } else if (error.response?.data) {
-          errorMessage = typeof error.response.data === 'string' 
-            ? error.response.data 
-            : JSON.stringify(error.response.data);
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-
-        if (error.response?.status) {
-          errorMessage += ` (Status: ${error.response.status})`;
-        }
-      }
-
-      showNotification("error", errorMessage);
+      showNotification("error", "Failed to create event");
     } finally {
       setFormLoading(false);
     }
@@ -215,22 +310,15 @@ const AdminEventsPage: React.FC = () => {
     }
 
     try {
-      const deleteData: DeleteEventRequest = {
-        eventId: event.eventId,
-      };
-
-      await deleteEvent(deleteData);
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Remove event from state
+      setEvents(prev => prev.filter(e => e.eventId !== event.eventId));
+      
       showNotification("success", "Event deleted successfully");
-      loadEvents();
     } catch (error) {
-      let errorMessage = "Failed to delete event";
-
-      if (error instanceof AxiosError) {
-        errorMessage =
-          error.response?.data?.message || error.message || errorMessage;
-      }
-
-      showNotification("error", errorMessage);
+      showNotification("error", "Failed to delete event");
     }
   };
 
@@ -285,16 +373,15 @@ const AdminEventsPage: React.FC = () => {
         />
 
         {/* Notification */}
-        <AdminNotification notification={notification} onClose={() => setNotification(null)} />
-
-        {/* Search and Filters */}
-        {/* @ts-ignore */}
         <AdminEventsFilters
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           selectedYear={selectedYear}
           setSelectedYear={setSelectedYear}
+          eventType={eventType}
+          setEventType={setEventType}
         />
+        
 
         {/* Create Event Form */}
         <AdminEventsCreateForm
