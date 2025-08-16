@@ -1,6 +1,18 @@
 import React from 'react';
 import { Loader2, Edit2 } from 'lucide-react';
-import type { Activity } from '../../../../api/activityApi';
+
+// Dummy Activity type (replaces API type)
+interface Activity {
+  activityId: number;
+  name: string;
+  subName: string;
+  type: string;
+  description: string;
+  status: string;
+  addedBy: number;
+  addedOn: string;
+  certificate?: boolean;
+}
 
 interface AdminActivityTableProps {
   activities: Activity[];

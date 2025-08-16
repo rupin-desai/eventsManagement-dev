@@ -172,7 +172,7 @@ const WeCareCalendar = () => {
   const [events, setEvents] = useState<DynamicWeCareEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadingImages, setLoadingImages] = useState<Set<number>>(new Set());
+  const [loadingImages] = useState<Set<number>>(new Set());
   // For calendar rings on all event dates
   const [hoveredEventAllDates, setHoveredEventAllDates] = useState<string[]>(
     []
@@ -201,50 +201,50 @@ const WeCareCalendar = () => {
     }
   };
 
-  const formatDateForDisplay = (dateString: string) => {
-    if (!dateString || dateString === "0001-01-01") return "To be shared";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch {
-      return "To be shared";
-    }
-  };
+  // const formatDateForDisplay = (dateString: string) => {
+  //   if (!dateString || dateString === "0001-01-01") return "To be shared";
+  //   try {
+  //     const date = new Date(dateString);
+  //     return date.toLocaleDateString("en-US", {
+  //       weekday: "long",
+  //       year: "numeric",
+  //       month: "long",
+  //       day: "numeric",
+  //     });
+  //   } catch {
+  //     return "To be shared";
+  //   }
+  // };
 
-  // Simulate loading activity image (no actual API call)
-  const loadActivityImage = async (
-    activityId: number
-  ): Promise<string | undefined> => {
-    try {
-      setLoadingImages((prev) => new Set(prev).add(activityId));
+  // // Simulate loading activity image (no actual API call)
+  // const loadActivityImage = async (
+  //   activityId: number
+  // ): Promise<string | undefined> => {
+  //   try {
+  //     setLoadingImages((prev) => new Set(prev).add(activityId));
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+  //     // Simulate API delay
+  //     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Return placeholder image based on activityId
-      const placeholderImages = [
-        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1615461066159-fea0960485d5?auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1497486751825-1233686d5d80?auto=format&fit=crop&w=800&q=80",
-      ];
+  //     // Return placeholder image based on activityId
+  //     const placeholderImages = [
+  //       "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80",
+  //       "https://images.unsplash.com/photo-1615461066159-fea0960485d5?auto=format&fit=crop&w=800&q=80",
+  //       "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
+  //       "https://images.unsplash.com/photo-1497486751825-1233686d5d80?auto=format&fit=crop&w=800&q=80",
+  //     ];
 
-      return placeholderImages[activityId % placeholderImages.length];
-    } catch {
-      return undefined;
-    } finally {
-      setLoadingImages((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(activityId);
-        return newSet;
-      });
-    }
-  };
+  //     return placeholderImages[activityId % placeholderImages.length];
+  //   } catch {
+  //     return undefined;
+  //   } finally {
+  //     setLoadingImages((prev) => {
+  //       const newSet = new Set(prev);
+  //       newSet.delete(activityId);
+  //       return newSet;
+  //     });
+  //   }
+  // };
 
   // Helper to check if an event is hovered (match both title and date)
   const isEventHovered = (

@@ -1,24 +1,38 @@
 import React, { useState, useEffect } from "react";
-import {
-  createActivity,
-  updateActivity,
-  createActivityImage,
-  type CreateActivityRequest,
-  type UpdateActivityRequest,
-} from "../../api/admin/activityAdminApi";
-import { getCurrentUserDetails } from "../../utils/volunteerFormHelpers";
-import {
-  getActiveActivities,
-  getDeactivatedActivities,
-  type Activity,
-} from "../../api/activityApi";
-import { AxiosError } from "axios";
+// Removed API imports
+// import {
+//   createActivity,
+//   updateActivity,
+//   createActivityImage,
+//   type CreateActivityRequest,
+//   type UpdateActivityRequest,
+// } from "../../api/admin/activityAdminApi";
+// import { getCurrentUserDetails } from "../../utils/volunteerFormHelpers";
+// import {
+//   getActiveActivities,
+//   getDeactivatedActivities,
+//   type Activity,
+// } from "../../api/activityApi";
+// import { AxiosError } from "axios";
 import AdminNotification from "../../components/ui/admin/AdminNotification";
 import AdminActivitySearch from "../../components/admin/pages/adminActivity/AdminActivitySearch";
 import AdminActivityForm from "../../components/admin/pages/adminActivity/AdminActivityForm";
 import AdminActivityTable from "../../components/admin/pages/adminActivity/AdminActivityTable";
 import AdminPageHeader from "../../components/ui/admin/AdminPageHeader";
 import { Plus, Activity as ActivityIcon } from "lucide-react";
+
+// Dummy Activity type (replaces API type)
+interface Activity {
+  activityId: number;
+  name: string;
+  subName: string;
+  type: string;
+  description: string;
+  status: string;
+  addedBy: number;
+  addedOn: string;
+  certificate?: boolean;
+}
 
 interface ActivityFormData {
   name: string;
@@ -28,6 +42,49 @@ interface ActivityFormData {
   certificate: boolean;
 }
 
+// Dummy data
+const dummyActivities: Activity[] = [
+  {
+    activityId: 1,
+    name: "Tree Plantation Drive",
+    subName: "Environmental Initiative",
+    type: "Annual",
+    description: "<p><strong>Objective:</strong> Engage employees in environmental conservation by planting trees.</p><p><strong>Activity Details:</strong></p><ul><li>• Plant saplings in designated areas</li><li>• Educate about environmental benefits</li></ul><p><strong>FAQ:</strong></p><ul><li>Do I need gardening experience? – No, guidance will be provided</li></ul>",
+    status: "A",
+    addedBy: 1001,
+    addedOn: "2025-01-15",
+    certificate: true,
+  },
+  {
+    activityId: 2,
+    name: "Blood Donation Camp",
+    subName: "Health Initiative",
+    type: "Annual",
+    description: "<p><strong>Objective:</strong> Save lives through voluntary blood donation.</p><p><strong>Activity Details:</strong></p><ul><li>• Medical screening process</li><li>• Safe blood collection</li></ul><p><strong>FAQ:</strong></p><ul><li>Is it safe? – Yes, all equipment is sterile</li></ul>",
+    status: "A",
+    addedBy: 1002,
+    addedOn: "2025-02-10",
+    certificate: true,
+  },
+  {
+    activityId: 3,
+    name: "Education Support",
+    subName: "Learning Initiative",
+    type: "Year-Round",
+    description: "<p><strong>Objective:</strong> Support underprivileged children's education.</p><p><strong>Activity Details:</strong></p><ul><li>• Teaching assistance</li><li>• Study material distribution</li></ul><p><strong>FAQ:</strong></p><ul><li>What subjects can I teach? – Any subject you're comfortable with</li></ul>",
+    status: "D",
+    addedBy: 1003,
+    addedOn: "2025-03-05",
+    certificate: false,
+  },
+];
+
+const dummyCurrentUser = {
+  employeeId: 1001,
+  empcode: "EMP001",
+  name: "John Doe",
+};
+
 const AdminActivityPage: React.FC = () => {
   // State management
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -35,7 +92,7 @@ const AdminActivityPage: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("A");
   const [notification, setNotification] = useState<{
     type: "success" | "error";
     message: string;
@@ -44,9 +101,10 @@ const AdminActivityPage: React.FC = () => {
   const [currentEmpId, setCurrentEmpId] = useState<number | null>(null);
 
   useEffect(() => {
-    getCurrentUserDetails()
-      .then((user) => setCurrentEmpId(user.employeeId))
-      .catch(() => setCurrentEmpId(null));
+    // Simulate getting current user details
+    setTimeout(() => {
+      setCurrentEmpId(dummyCurrentUser.employeeId);
+    }, 500);
   }, []);
 
   // Form state
@@ -79,13 +137,16 @@ const AdminActivityPage: React.FC = () => {
   const loadActivities = async () => {
     try {
       setLoading(true);
-      let response;
-      if (statusFilter === "D") {
-        response = await getDeactivatedActivities();
-      } else {
-        response = await getActiveActivities();
-      }
-      setActivities(response.data);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Filter dummy data based on status
+      const filteredActivities = dummyActivities.filter(activity => 
+        statusFilter === "D" ? activity.status === "D" : activity.status === "A"
+      );
+      
+      setActivities(filteredActivities);
     } catch (error) {
       console.error("Error loading activities:", error);
       showNotification("error", "Failed to load activities");
@@ -120,47 +181,37 @@ const AdminActivityPage: React.FC = () => {
     try {
       setFormLoading(true);
 
-      const createData: CreateActivityRequest = {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const newActivity: Activity = {
+        activityId: Math.max(...dummyActivities.map(a => a.activityId)) + 1,
         name: formData.name,
         subName: formData.subName,
-        type: formData.type,
+        type: formData.type ? "Year-Round" : "Annual",
         description: formData.description,
-        addedBy: currentEmpId ?? 48710, // Use logged-in user's empId, fallback to 48710
+        status: "A",
+        addedBy: currentEmpId ?? 1001,
+        addedOn: new Date().toISOString(),
         certificate: formData.certificate
       };
 
-      const response = await createActivity(createData);
+      // Add to dummy data
+      dummyActivities.push(newActivity);
+      
+      showNotification("success", "Activity created successfully");
 
-      if (response.status === 200) {
-        showNotification("success", "Activity created successfully");
-
-        // If there's an image, upload it
-        if (selectedImage && response.data?.activityId) {
-          try {
-            await createActivityImage(selectedImage, response.data.activityId);
-            showNotification("success", "Activity image uploaded successfully");
-          } catch (imageError) {
-            console.error("Error uploading image:", imageError);
-            showNotification(
-              "error",
-              "Activity created but image upload failed"
-            );
-          }
-        }
-
-        resetForm();
-        loadActivities(); // Reload activities
+      if (selectedImage) {
+        // Simulate image upload
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        showNotification("success", "Activity image uploaded successfully");
       }
+
+      resetForm();
+      loadActivities(); // Reload activities
     } catch (error) {
       console.error("Error creating activity:", error);
-      let errorMessage = "Failed to create activity";
-
-      if (error instanceof AxiosError) {
-        errorMessage =
-          error.response?.data?.message || error.message || errorMessage;
-      }
-
-      showNotification("error", errorMessage);
+      showNotification("error", "Failed to create activity");
     } finally {
       setFormLoading(false);
     }
@@ -179,30 +230,29 @@ const AdminActivityPage: React.FC = () => {
     try {
       setFormLoading(true);
 
-      const updateData: UpdateActivityRequest = {
-        activityId: editingActivity.activityId,
-        name: formData.name,
-        subName: formData.subName,
-        type: formData.type ? "Year-Round" : "Annual",
-        description: formData.description,
-        certificate: formData.certificate,
-      };
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      await updateActivity(updateData);
+      // Update in dummy data
+      const index = dummyActivities.findIndex(a => a.activityId === editingActivity.activityId);
+      if (index !== -1) {
+        dummyActivities[index] = {
+          ...dummyActivities[index],
+          name: formData.name,
+          subName: formData.subName,
+          type: formData.type ? "Year-Round" : "Annual",
+          description: formData.description,
+          certificate: formData.certificate,
+        };
+      }
+
       showNotification("success", "Activity updated successfully");
 
       resetForm();
       loadActivities(); // Reload activities
     } catch (error) {
       console.error("Error updating activity:", error);
-      let errorMessage = "Failed to update activity";
-
-      if (error instanceof AxiosError) {
-        errorMessage =
-          error.response?.data?.message || error.message || errorMessage;
-      }
-
-      showNotification("error", errorMessage);
+      showNotification("error", "Failed to update activity");
     } finally {
       setFormLoading(false);
     }
@@ -215,7 +265,7 @@ const AdminActivityPage: React.FC = () => {
       subName: activity.subName,
       type: activity.type === "Year-Round",
       description: activity.description,
-      certificate: false, // This might need to come from API
+      certificate: activity.certificate || false,
     });
     setShowCreateForm(true);
   };
@@ -234,7 +284,7 @@ const AdminActivityPage: React.FC = () => {
     }
   };
 
-  // No need to filter by status here, as API already filters by status
+  // Filter activities by search term
   const filteredActivities = activities.filter(
     (activity) =>
       activity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

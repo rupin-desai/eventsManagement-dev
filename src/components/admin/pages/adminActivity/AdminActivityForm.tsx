@@ -15,20 +15,29 @@ import {
   Image as ImageIcon,
   RefreshCcw,
 } from "lucide-react";
-import type { Activity as BaseActivity } from "../../../../api/activityApi";
-
-// Extend Activity type to include 'certificate'
-type Activity = BaseActivity & {
-  certificate?: boolean;
-};
-import {
-  getActivityImage,
-  convertToDataUrl,
-} from "../../../../api/activityApi";
-import { createActivityImage, updateActivityStatus } from "../../../../api/admin/activityAdminApi";
-import { getCurrentUserDetails } from "../../../../utils/volunteerFormHelpers";
+// Removed API imports
+// import type { Activity as BaseActivity } from "../../../../api/activityApi";
+// import {
+//   getActivityImage,
+//   convertToDataUrl,
+// } from "../../../../api/activityApi";
+// import { createActivityImage, updateActivityStatus } from "../../../../api/admin/activityAdminApi";
+// import { getCurrentUserDetails } from "../../../../utils/volunteerFormHelpers";
+// import { getActivities } from "../../../../api/activityApi";
 import AdminNotification from "../../../ui/admin/AdminNotification";
-import { getActivities } from "../../../../api/activityApi"; // <-- Import the API
+
+// Dummy Activity type (replaces API type)
+interface Activity {
+  activityId: number;
+  name: string;
+  subName: string;
+  type: string;
+  description: string;
+  status: string;
+  addedBy: number;
+  addedOn: string;
+  certificate?: boolean;
+}
 
 interface ActivityFormData {
   name: string;
@@ -54,6 +63,13 @@ interface FAQ {
   question: string;
   answer: string;
 }
+
+// Dummy user details
+const dummyUserDetails = {
+  employeeId: 1001,
+  empcode: "EMP001",
+  name: "John Doe"
+};
 
 // ✅ Helper function to generate direct HTML description
 const generateDirectDescription = (): string => {
@@ -195,27 +211,21 @@ const AdminActivityForm: React.FC<AdminActivityFormProps> = ({
     }
   }, [editingActivity, formData.description, isOpen]);
 
-  // Fetch certificate value from API when editingActivity changes
+  // Simulate fetching certificate status (no actual API call)
   useEffect(() => {
     const fetchCertificateStatus = async () => {
       if (editingActivity && editingActivity.activityId) {
         try {
-          // Fetch all activities (status can be 'A' or undefined for all)
-          const res = await getActivities(undefined);
-          // Ensure res and res.data are defined and are arrays
-          if (res && res.data && Array.isArray(res.data)) {
-            const activities = res.data as Activity[];
-            const found = activities.find(
-              (a) => a.activityId === editingActivity.activityId
-            );
-            if (found && typeof found.certificate !== "undefined") {
-              setCertificateApiValue(!!found.certificate);
-              setFormData((prev) => ({
-                ...prev,
-                certificate: !!found.certificate,
-              }));
-            }
-          }
+          // Simulate API call with timeout
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Use dummy data or existing activity data
+          const certificateValue = editingActivity.certificate ?? false;
+          setCertificateApiValue(certificateValue);
+          setFormData((prev) => ({
+            ...prev,
+            certificate: certificateValue,
+          }));
         } catch {
           setCertificateApiValue(null);
         }
@@ -343,7 +353,7 @@ const AdminActivityForm: React.FC<AdminActivityFormProps> = ({
     };
   }, [isOpen]);
 
-  // --- Load and display activity image if editing ---
+  // --- Load and display activity image if editing (simulate) ---
   const [activityImage, setActivityImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
 
@@ -354,22 +364,26 @@ const AdminActivityForm: React.FC<AdminActivityFormProps> = ({
 
   const updateImageInputRef = useRef<HTMLInputElement>(null);
 
+  // Simulate loading activity image
   useEffect(() => {
     let ignore = false;
     const fetchImage = async () => {
       if (editingActivity && editingActivity.activityId) {
         setImageLoading(true);
         try {
-          const res = await getActivityImage(editingActivity.activityId);
-          // Use fileName as image path if present, else fallback to legacy
-          if (!ignore && res.data?.fileName) {
-            setActivityImage(res.data.fileName);
-          } else if (!ignore && res.data?.imgFile && res.data?.contentType) {
-            setActivityImage(
-              convertToDataUrl(res.data.imgFile, res.data.contentType)
-            );
-          } else if (!ignore) {
-            setActivityImage(null);
+          // Simulate API call with timeout
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Set dummy image based on activity ID
+          const dummyImages = [
+            "https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=800&q=80",
+            "https://images.unsplash.com/photo-1464207687429-7505649dae38?auto=format&fit=crop&w=800&q=80",
+            "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=800&q=80"
+          ];
+          
+          if (!ignore) {
+            const imageIndex = editingActivity.activityId % dummyImages.length;
+            setActivityImage(dummyImages[imageIndex]);
           }
         } catch {
           if (!ignore) setActivityImage(null);
@@ -399,56 +413,70 @@ const AdminActivityForm: React.FC<AdminActivityFormProps> = ({
     }
   };
 
-  // Handle update image upload
+  // Simulate updating activity image
   const handleUpdateImageUpload = async () => {
     if (!editingActivity?.activityId || !updateImageFile) return;
     setUpdateImageLoading(true);
     try {
-      await createActivityImage(updateImageFile, editingActivity.activityId);
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       setUpdateImageFile(null);
       setUpdateImagePreview(null);
-      // Reload the image
-      const res = await getActivityImage(editingActivity.activityId);
-      if (res.data?.imgFile && res.data?.contentType) {
-        setActivityImage(convertToDataUrl(res.data.imgFile, res.data.contentType));
+      
+      // Set the preview image as the new activity image
+      if (updateImagePreview) {
+        setActivityImage(updateImagePreview);
       }
-      alert("Activity image updated successfully!");
+      
+      setNotification({
+        type: "success",
+        message: "Activity image updated successfully!"
+      });
     } catch (err) {
-      alert("Failed to update activity image.");
+      setNotification({
+        type: "error",
+        message: "Failed to update activity image."
+      });
     } finally {
       setUpdateImageLoading(false);
     }
   };
 
   // Status management states
-  const [statusValue, setStatusValue] = useState<"A" | "D">("A"); // <-- default to "A" for Active
+  const [statusValue, setStatusValue] = useState<"A" | "D">("A");
   const [statusLoading, setStatusLoading] = useState(false);
   const [currentEmpId, setCurrentEmpId] = useState<number | null>(null);
 
-  // Fetch empcode (employeeId) for addedBy
+  // Simulate fetching current user details
   useEffect(() => {
-    getCurrentUserDetails()
-      .then((user) => setCurrentEmpId(user.employeeId))
-      .catch(() => setCurrentEmpId(null));
+    const getCurrentUser = async () => {
+      try {
+        // Simulate API call with timeout
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setCurrentEmpId(dummyUserDetails.employeeId);
+      } catch {
+        setCurrentEmpId(null);
+      }
+    };
+    getCurrentUser();
   }, []);
 
   // Set initial status when editing activity changes
   useEffect(() => {
     if (editingActivity && (editingActivity as any).status) {
-      setStatusValue((editingActivity as any).status === "D" ? "D" : "A"); // <-- use "A" for Active
+      setStatusValue((editingActivity as any).status === "D" ? "D" : "A");
     }
   }, [editingActivity]);
 
-  // Handle status update
-  const handleStatusUpdate = async (newStatus: "A" | "D") => { // <-- use "A" for Active
+  // Simulate status update
+  const handleStatusUpdate = async (newStatus: "A" | "D") => {
     if (!editingActivity || !currentEmpId) return;
     setStatusLoading(true);
     try {
-      await updateActivityStatus({
-        activityId: (editingActivity as any).activityId,
-        status: newStatus,
-        addedBy: currentEmpId,
-      });
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       setStatusValue(newStatus);
       setNotification({
         type: "success",
@@ -608,7 +636,7 @@ const AdminActivityForm: React.FC<AdminActivityFormProps> = ({
                 </div>
               </div>
 
-              {/* Certificate checkbox (update this section) */}
+              {/* Certificate checkbox */}
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -638,7 +666,7 @@ const AdminActivityForm: React.FC<AdminActivityFormProps> = ({
               {editingActivity && (
                 <div>
                   <label
-                    className="block text-sm font-medium mb-2 flex items-center gap-2"
+                    className=" text-sm font-medium mb-2 flex items-center gap-2"
                     style={{ color: "var(--brand-secondary-dark)" }}
                   >
                     <ImageIcon className="w-4 h-4" />
