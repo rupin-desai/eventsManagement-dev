@@ -9,17 +9,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import EventDetailsModal from "../../ui/modals/EventDetailsModal";
-import { getEventsByYear, type Event } from "../../../api/eventApi";
-import {
-  getEventLocationsByEventId,
-  getEventLocationsDateByEventLocId,
-  type EventLocation,
-} from "../../../api/locationApi";
-import {
-  getActivityImage,
-  convertToDataUrl,
-  type ActivityImageResponse,
-} from "../../../api/activityApi";
 
 // Dynamic event interface
 export interface DynamicWeCareEvent {
@@ -43,6 +32,102 @@ export interface DynamicWeCareEvent {
   image?: string;
   color: string;
 }
+
+// Dummy event data
+const dummyWeCareEvents: DynamicWeCareEvent[] = [
+  {
+    eventId: 1,
+    activityId: 101,
+    title: "Tree Plantation Drive",
+    name: "Tree Plantation Drive",
+    subTitle: "Environmental Initiative",
+    description:
+      "Join us in making our environment greener by planting trees in various locations across the city.",
+    date: "2025-08-15",
+    displayDate: "Friday, August 15, 2025",
+    locations: "Mumbai, Delhi, Bangalore",
+    allLocations: ["Mumbai", "Delhi", "Bangalore"],
+    allDates: ["2025-08-15", "2025-08-16", "2025-08-17"],
+    tentativeMonth: "8",
+    tentativeYear: "2025",
+    type: "annual",
+    enableConf: "true",
+    enableCert: "true",
+    enableComp: "false",
+    image:
+      "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80",
+    color: "#22c55e",
+  },
+  {
+    eventId: 2,
+    activityId: 102,
+    title: "Blood Donation Camp",
+    name: "Blood Donation Camp",
+    subTitle: "Health Initiative",
+    description:
+      "Save lives by donating blood at our annual blood donation camp organized across multiple cities.",
+    date: "2025-08-22",
+    displayDate: "Friday, August 22, 2025",
+    locations: "Chennai, Pune, Hyderabad",
+    allLocations: ["Chennai", "Pune", "Hyderabad"],
+    allDates: ["2025-08-22", "2025-08-23"],
+    tentativeMonth: "8",
+    tentativeYear: "2025",
+    type: "annual",
+    enableConf: "true",
+    enableCert: "true",
+    enableComp: "false",
+    image:
+      "https://images.unsplash.com/photo-1615461066159-fea0960485d5?auto=format&fit=crop&w=800&q=80",
+    color: "#ef4444",
+  },
+  {
+    eventId: 3,
+    activityId: 103,
+    title: "Community Clean-Up",
+    name: "Community Clean-Up",
+    subTitle: "Cleanliness Drive",
+    description:
+      "Help clean and beautify our local communities and public spaces for a better tomorrow.",
+    date: "2025-08-08",
+    displayDate: "Friday, August 8, 2025",
+    locations: "Kolkata, Ahmedabad",
+    allLocations: ["Kolkata", "Ahmedabad"],
+    allDates: ["2025-08-08", "2025-08-09", "2025-08-10"],
+    tentativeMonth: "8",
+    tentativeYear: "2025",
+    type: "annual",
+    enableConf: "true",
+    enableCert: "true",
+    enableComp: "false",
+    image:
+      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
+    color: "#06b6d4",
+  },
+  {
+    eventId: 4,
+    activityId: 104,
+    title: "Education Support Program",
+    name: "Education Support Program",
+    subTitle: "Learning Initiative",
+    description:
+      "Support underprivileged children with educational materials and tutoring sessions.",
+    date: "2025-08-29",
+    displayDate: "Friday, August 29, 2025",
+    locations: "Jaipur, Lucknow, Bhopal",
+    allLocations: ["Jaipur", "Lucknow", "Bhopal"],
+    allDates: ["2025-08-29", "2025-08-30", "2025-08-31"],
+    tentativeMonth: "8",
+    tentativeYear: "2025",
+    type: "annual",
+    enableConf: "true",
+    enableCert: "true",
+    enableComp: "false",
+    image:
+      "https://images.unsplash.com/photo-1497486751825-1233686d5d80?auto=format&fit=crop&w=800&q=80",
+    color: "#f59e42",
+  },
+];
 
 const eventHexColors = [
   "#6366f1", // indigo
@@ -98,158 +183,17 @@ const WeCareCalendar = () => {
     // eslint-disable-next-line
   }, []);
 
-  // Fetch all August annual events and their locations
+  // Load dummy We Care events (simulating API call)
   const loadWeCareEvents = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const currentYear = new Date().getFullYear();
-      const response = await getEventsByYear(currentYear.toString());
+      // Simulate API call with timeout
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      let allEvents: Event[] = [];
-      if (response.data && Array.isArray(response.data)) {
-        allEvents = response.data;
-      }
-
-      // Filter for August Annual events only
-      const augustAnnualEvents = allEvents.filter((event) => {
-        const isAugust = event.tentativeMonth === "8";
-        const isAnnual = event.type?.toLowerCase() === "annual";
-        const hasRequiredFields =
-          event.type && event.tentativeMonth && event.tentativeYear;
-        return hasRequiredFields && isAugust && isAnnual;
-      });
-
-      // For each event, fetch its locations and flatten by date+event
-      let flatEvents: {
-        eventId: number;
-        activityId: number;
-        title: string;
-        name?: string;
-        subTitle?: string;
-        description: string;
-        date: string;
-        displayDate: string;
-        locationName: string;
-        tentativeMonth: string;
-        tentativeYear: string;
-        type: string;
-        enableConf: string;
-        enableCert: string;
-        enableComp: string;
-        image?: string;
-        color: string;
-      }[] = [];
-
-      for (const event of augustAnnualEvents) {
-        let eventLocations: EventLocation[] = [];
-        try {
-          const resp = await getEventLocationsByEventId(event.eventId);
-          eventLocations = resp.data || [];
-        } catch {
-          eventLocations = [];
-        }
-
-        // If no locations, still push a default
-        if (eventLocations.length === 0) {
-          flatEvents.push({
-            eventId: event.eventId,
-            activityId: event.activityId,
-            title: event.name,
-            name: event.name,
-            subTitle: event.subName || undefined,
-            description: event.description || "",
-            date: "", // No date
-            displayDate: `Aug ${event.tentativeYear}`,
-            locationName: "To be shared",
-            tentativeMonth: event.tentativeMonth,
-            tentativeYear: event.tentativeYear,
-            type: event.type,
-            enableConf: event.enableConf,
-            enableCert: event.enableCert,
-            enableComp: event.enableComp,
-            image: undefined,
-            color: "bg-green-500",
-          });
-        } else {
-          for (const loc of eventLocations) {
-            flatEvents.push({
-              eventId: event.eventId,
-              activityId: event.activityId,
-              title: event.name,
-              name: event.name,
-              subTitle: event.subName || undefined,
-              description: event.description || "",
-              date: loc.eventDate,
-              displayDate: formatDateForDisplay(loc.eventDate),
-              locationName: loc.locationName,
-              tentativeMonth: event.tentativeMonth,
-              tentativeYear: event.tentativeYear,
-              type: event.type,
-              enableConf: event.enableConf,
-              enableCert: event.enableCert,
-              enableComp: event.enableComp,
-              image: undefined,
-              color: eventHexColors[0],
-            });
-          }
-        }
-      }
-
-      // Combine by eventId+date (merge locations)
-      const combinedMap = new Map<string, DynamicWeCareEvent>();
-      for (const item of flatEvents) {
-        if (!item.date) continue; // skip if no date
-        const key = `${item.eventId}__${item.date}`;
-        if (!combinedMap.has(key)) {
-          combinedMap.set(key, {
-            eventId: item.eventId,
-            activityId: item.activityId,
-            title: item.title,
-            name: item.name,
-            subTitle: item.subTitle,
-            description: item.description,
-            date: item.date,
-            displayDate: item.displayDate,
-            locations: item.locationName,
-            allLocations: [item.locationName],
-            allDates: [item.date],
-            tentativeMonth: item.tentativeMonth,
-            tentativeYear: item.tentativeYear,
-            type: item.type,
-            enableConf: item.enableConf,
-            enableCert: item.enableCert,
-            enableComp: item.enableComp,
-            image: item.image,
-            color: item.color,
-          });
-        } else {
-          const prev = combinedMap.get(key)!;
-          prev.allLocations.push(item.locationName);
-          prev.locations = Array.from(new Set(prev.allLocations)).join(", ");
-        }
-      }
-
-      // Load images for each unique activityId
-      const combinedEventsArr = Array.from(combinedMap.values());
-      await Promise.all(
-        combinedEventsArr.map(async (event) => {
-          if (event.activityId && !event.image) {
-            try {
-              const img = await loadActivityImage(event.activityId);
-              event.image = img;
-            } catch {}
-          }
-        })
-      );
-
-      // Sort by date
-      combinedEventsArr.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-
-      setEvents(combinedEventsArr);
+      // Use dummy data
+      setEvents(dummyWeCareEvents);
     } catch (error) {
       setError("Failed to load current year events");
     } finally {
@@ -272,26 +216,25 @@ const WeCareCalendar = () => {
     }
   };
 
+  // Simulate loading activity image (no actual API call)
   const loadActivityImage = async (
     activityId: number
   ): Promise<string | undefined> => {
     try {
       setLoadingImages((prev) => new Set(prev).add(activityId));
-      const response = await getActivityImage(activityId);
-      const imageData: ActivityImageResponse = response.data;
-      // Return the image path if available
-      if (imageData.fileName) {
-        return imageData.fileName;
-      }
-      // Fallback to base64 if needed
-      if (imageData.imgFile && imageData.contentType) {
-        const dataUrl = convertToDataUrl(
-          imageData.imgFile,
-          imageData.contentType
-        );
-        return dataUrl;
-      }
-      return undefined;
+
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Return placeholder image based on activityId
+      const placeholderImages = [
+        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1615461066159-fea0960485d5?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1497486751825-1233686d5d80?auto=format&fit=crop&w=800&q=80",
+      ];
+
+      return placeholderImages[activityId % placeholderImages.length];
     } catch {
       return undefined;
     } finally {
@@ -322,24 +265,19 @@ const WeCareCalendar = () => {
     setSelectedEvent(null);
   };
 
-  // Fetch all dates for all locations of an event (for ring effect)
+  // Simulate fetching all dates for all locations of an event (for ring effect)
   const fetchAllDatesForEvent = async (eventId: number) => {
     try {
-      const resp = await getEventLocationsByEventId(eventId);
-      const locations = resp.data || [];
-      let allDates: string[] = [];
-      for (const loc of locations) {
-        const dateResp = await getEventLocationsDateByEventLocId(
-          loc.eventLocationId
-        );
-        if (Array.isArray(dateResp.data)) {
-          allDates = allDates.concat(
-            dateResp.data.map((d: any) => d.date.slice(0, 10))
-          );
-        }
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Get all dates for the event from dummy data
+      const event = events.find((e) => e.eventId === eventId);
+      if (event && event.allDates) {
+        setHoveredEventAllDates(event.allDates);
+      } else {
+        setHoveredEventAllDates([]);
       }
-      allDates = Array.from(new Set(allDates));
-      setHoveredEventAllDates(allDates);
     } catch {
       setHoveredEventAllDates([]);
     }

@@ -57,7 +57,7 @@ export default function ExperienceOverlay({
     >
       {/* Absolute cross at top right of the page */}
       <motion.button
-        className="fixed top-4 right-4 md:top-6 md:right-6 cursor-pointer z-50 bg-black/70 text-white rounded-full p-2 hover:bg-black/90 transition active:scale-95 transition-transform duration-200"
+        className="fixed top-4 right-4 md:top-6 md:right-6 cursor-pointer z-50 bg-black/70 text-white rounded-full p-2 hover:bg-black/90 transition active:scale-95  duration-200"
         onClick={onClose}
         aria-label="Close"
         style={{ pointerEvents: "auto" }}
@@ -71,7 +71,7 @@ export default function ExperienceOverlay({
       {/* Desktop Arrows: left/right center */}
       {showPrev && (
         <motion.button
-          className="hidden md:flex fixed left-4 top-1/2 z-50 cursor-pointer -translate-y-1/2 bg-black/60 text-white rounded-full p-2 hover:bg-black/90 transition active:scale-95 transition-transform duration-200"
+          className="hidden md:flex fixed left-4 top-1/2 z-50 cursor-pointer -translate-y-1/2 bg-black/60 text-white rounded-full p-2 hover:bg-black/90 transition active:scale-95  duration-200"
           onClick={handlePrev}
           aria-label="Previous"
           style={{ pointerEvents: "auto" }}
@@ -84,7 +84,7 @@ export default function ExperienceOverlay({
       )}
       {showNext && (
         <motion.button
-          className="hidden md:flex fixed right-4 top-1/2 z-50 cursor-pointer -translate-y-1/2 bg-black/60 text-white rounded-full p-2 hover:bg-black/90 transition active:scale-95 transition-transform duration-200"
+          className="hidden md:flex fixed right-4 top-1/2 z-50 cursor-pointer -translate-y-1/2 bg-black/60 text-white rounded-full p-2 hover:bg-black/90 transition active:scale-95  duration-200"
           onClick={handleNext}
           aria-label="Next"
           style={{ pointerEvents: "auto" }}
@@ -101,7 +101,7 @@ export default function ExperienceOverlay({
         <div className="flex md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 gap-8">
           {showPrev && (
             <motion.button
-              className="bg-black/60 text-white rounded-full p-3 hover:bg-black/90 transition active:scale-95 transition-transform duration-200 cursor-pointer"
+              className="bg-black/60 text-white rounded-full p-3 hover:bg-black/90 transition active:scale-95  duration-200 cursor-pointer"
               onClick={handlePrev}
               aria-label="Previous"
               style={{ pointerEvents: "auto" }}
@@ -114,7 +114,7 @@ export default function ExperienceOverlay({
           )}
           {showNext && (
             <motion.button
-              className="bg-black/60 text-white rounded-full p-3 hover:bg-black/90 transition active:scale-95 transition-transform duration-200 cursor-pointer"
+              className="bg-black/60 text-white rounded-full p-3 hover:bg-black/90 transition active:scale-95  duration-200 cursor-pointer"
               onClick={handleNext}
               aria-label="Next"
               style={{ pointerEvents: "auto" }}

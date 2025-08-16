@@ -72,8 +72,7 @@ const AttendedEventCard: React.FC<AttendedEventCardProps> = ({
   formatEventTime,
   getStatusColor,
   getStatusText,
-  employeeId,
-  eventId
+
 }) => {
   const [feedbackDetails, setFeedbackDetails] = useState<DummyFeedbackDetails | null>(null);
   const [loadingFeedback, setLoadingFeedback] = useState(true);
@@ -463,7 +462,7 @@ const AchievementEvents: React.FC<AchievementEventsProps> = () => {
   const [employeeName, setEmployeeName] = useState<string>(dummyUserDetails.name);
   
   const [updatingStatus, setUpdatingStatus] = useState<Set<number>>(new Set());
-  const [loadingRatings, setLoadingRatings] = useState<Set<number>>(new Set());
+  const [loadingRatings ] = useState<Set<number>>(new Set());
   const [updatingRatings, setUpdatingRatings] = useState<Set<number>>(new Set());
   
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
